@@ -127,71 +127,74 @@ class MainWindow(QWidget):
             return False
 
 
-    def draw_graph(self):
+    def validate_function(self):
         function_text = self.function_input.text().strip()
         if not function_text:
             self.show_error("Ошибка", "Введите функцию")
-            return
+            return False
 
         f = parse_function(function_text)
         if f is None:
             self.show_error("Ошибка", "Не удалось распознать функцию, обратитесь к подсказкам по вводу.")
-            return
+            return False
 
         try:
-            if self.validate_fields():
-                x_sym = sp.symbols('x')
-                self.func = sp.lambdify(x_sym, f, 'numpy')
-                x_vals = np.linspace(self.left_border, self.right_border, SAMPLES_AMOUNT)
-                try:
-                    y_vals = self.func(x_vals)
-                except (OverflowError, ValueError, TypeError) as e:
-                    self.show_error("Ошибка вычисления", "Функция принимает слишком большие значения. Измените интервал.")
-                    return
-
-                # Очищаем предыдущий график
-                self.graph_widget.clear()
-
-                # Настраиваем цвета осей и текста
-                self.graph_widget.getAxis('left').setPen(pg.mkPen(color='k'))  # Черный цвет для оси Y
-                self.graph_widget.getAxis('bottom').setPen(pg.mkPen(color='k'))  # Черный цвет для оси X
-                self.graph_widget.getAxis('left').setTextPen(pg.mkPen(color='k'))  # Черный цвет для текста оси Y
-                self.graph_widget.getAxis('bottom').setTextPen(pg.mkPen(color='k'))  # Черный цвет для текста оси X
-
-                # Настраиваем сетку
-                self.graph_widget.showGrid(x=True, y=True, alpha=0.5)
-                self.graph_widget.getViewBox().setBackgroundColor('w')  # Белый фон внутри графика
-
-                # Рисуем новый график
-                self.graph_widget.plot(x_vals, y_vals, pen=pg.mkPen(color='b', width=2), name=function_text)
-                self.graph_widget.setXRange(self.left_border, self.right_border)
-                self.graph_widget.setLabel('left', 'y')
-                self.graph_widget.setLabel('bottom', 'x')
-                self.graph_widget.setTitle(f"График функции: {function_text}", color='k')  # Черный цвет заголовка
-
-                # # Добавляем вертикальные пунктирные линии на границах интервала
-                # left_line = pg.InfiniteLine(pos=self.left_border, angle=90,
-                #                             pen=pg.mkPen(color='r', width=1, style=pg.PenStyle.DashLine))
-                # right_line = pg.InfiniteLine(pos=self.right_border, angle=90,
-                #                              pen=pg.mkPen(color='r', width=1, style=pg.PenStyle.DashLine))
-
-                # Устанавливаем границы, за которые нельзя выходить
-                view_box = self.graph_widget.getViewBox()
-                view_box.setLimits(
-                    xMin=self.left_border,
-                    xMax=self.right_border,
-                    yMin=min(y_vals),
-                    yMax=max(y_vals),
-                )
-
+            x_sym = sp.symbols('x')
+            self.func = sp.lambdify(x_sym, f, 'numpy')
+            self.function_text = function_text
+            return True
         except Exception as e:
             self.show_error("Ошибка", "Ошибка: Функция введена некорректно, обратитесь к подсказкам по вводу функций.")
 
-        return True
+
+    def draw_graph(self):
+        if self.validate_fields() and self.validate_function():
+            x_vals = np.linspace(self.left_border, self.right_border, SAMPLES_AMOUNT)
+            try:
+                y_vals = self.func(x_vals)
+            except (OverflowError, ValueError, TypeError) as e:
+                self.show_error("Ошибка вычисления", "Функция принимает слишком большие значения. Измените интервал.")
+                return
+
+            # Очищаем предыдущий график
+            self.graph_widget.clear()
+
+            # Настраиваем цвета осей и текста
+            self.graph_widget.getAxis('left').setPen(pg.mkPen(color='k'))  # Черный цвет для оси Y
+            self.graph_widget.getAxis('bottom').setPen(pg.mkPen(color='k'))  # Черный цвет для оси X
+            self.graph_widget.getAxis('left').setTextPen(pg.mkPen(color='k'))  # Черный цвет для текста оси Y
+            self.graph_widget.getAxis('bottom').setTextPen(pg.mkPen(color='k'))  # Черный цвет для текста оси X
+
+            # Настраиваем сетку
+            self.graph_widget.showGrid(x=True, y=True, alpha=0.5)
+            self.graph_widget.getViewBox().setBackgroundColor('w')  # Белый фон внутри графика
+
+            # Рисуем новый график
+            self.graph_widget.plot(x_vals, y_vals, pen=pg.mkPen(color='b', width=2), name=self.function_text)
+            self.graph_widget.setXRange(self.left_border, self.right_border)
+            self.graph_widget.setLabel('left', 'y')
+            self.graph_widget.setLabel('bottom', 'x')
+            self.graph_widget.setTitle(f"График функции: {self.function_text}", color='k')  # Черный цвет заголовка
+
+            # # Добавляем вертикальные пунктирные линии на границах интервала
+            # left_line = pg.InfiniteLine(pos=self.left_border, angle=90,
+            #                             pen=pg.mkPen(color='r', width=1, style=pg.PenStyle.DashLine))
+            # right_line = pg.InfiniteLine(pos=self.right_border, angle=90,
+            #                              pen=pg.mkPen(color='r', width=1, style=pg.PenStyle.DashLine))
+
+            # Устанавливаем границы, за которые нельзя выходить
+            view_box = self.graph_widget.getViewBox()
+            view_box.setLimits(
+                xMin=self.left_border,
+                xMax=self.right_border,
+                yMin=min(y_vals),
+                yMax=max(y_vals),
+            )
 
     def calculate(self):
         try:
-            if self.validate_fields():
+            if self.validate_fields() and self.validate_function():
+                self.draw_graph()
                 root_amount = root_counter(self.left_border, self.right_border, self.func)
                 if root_amount > 1:
                     self.show_error("Ошибка диапазона", "Для корректной работы необходимо выбрать интервал, содержащий только 1 корень.")
