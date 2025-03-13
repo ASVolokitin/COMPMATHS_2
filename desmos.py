@@ -2,11 +2,12 @@ import sys
 import numpy as np
 import sympy as sp
 from PyQt6.QtWidgets import (QApplication, QWidget, QLineEdit, QPushButton, QLabel,
-                             QMessageBox, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem, QDialog, QTextEdit)
+                             QMessageBox, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem, QDialog, QTextEdit,
+                             QFileDialog)
 from PyQt6.QtGui import QDoubleValidator, QColor
 import pyqtgraph as pg
 
-from calcs import parse_function, root_counter
+from calcs import parse_function, root_counter, half_division, newton
 
 MAX_INTERVAL_LENGTH = 1000000
 SAMPLES_AMOUNT = 10000
@@ -121,6 +122,13 @@ class MainWindow(QWidget):
         self.result_table = QTableWidget(0, 2)
         self.result_table.setHorizontalHeaderLabels(["Метод", "Найденный корень"])
         self.main_layout.addWidget(self.result_table)
+        self.result_table.resizeColumnsToContents()
+        self.result_table.horizontalHeader().setStretchLastSection(True)
+
+        self.save_button = QPushButton("Сохранить результаты в файл", self)
+        self.save_button.clicked.connect(self.save_results)
+        self.main_layout.addWidget(self.save_button)
+        self.save_button.hide()
 
         self.setLayout(self.main_layout)
 
@@ -300,17 +308,70 @@ class MainWindow(QWidget):
         self.is_solving_system = False
         self.draw_graph()
 
+    def update_result_table(self, results):
+        self.result_table.clearContents()
+        self.result_table.setRowCount(0)
+        self.result_table.setRowCount(len(results))
+        for row, (method, root) in enumerate(results):
+            self.result_table.setItem(row, 0, QTableWidgetItem(method))
+            self.result_table.setItem(row, 1, QTableWidgetItem(f"{root:.6f}"))
+        self.result_table.resizeColumnsToContents()
+        self.result_table.horizontalHeader().setStretchLastSection(True)
+
     def calculate(self):
         try:
             if self.validate_all():
                 self.draw_graph()
                 if not self.is_solving_system:
                     root_amount = root_counter(self.left_border, self.right_border, self.first_function)
-                    if root_amount > 1:
+                    if root_amount != 1:
                         self.show_error("Ошибка диапазона", "Для корректной работы необходимо выбрать интервал, содержащий только 1 корень.")
                         return False
+                    else:
+                        self.update_result_table(self.calculate_one())
+
+
+
         except (TypeError, AttributeError):
             self.show_error("Ошибка", "Ошибка: Функция введена некорректно, обратитесь к подсказкам по вводу функций.")
+
+    def calculate_one(self):
+        results = []
+        results.append(("Метод половинного деления", half_division(self.left_border, self.right_border, self.accuracy, self.first_function)))
+        results.append(("Метод Ньютона", newton(self.left_border, self.right_border, self.accuracy, self.first_function)))
+        self.save_button.show()
+        return results
+
+    def save_results(self):
+
+        try:
+            if self.result_table.rowCount() == 0:
+                self.show_error("Ошибка", "Нет данных для сохранения.")
+                return
+
+            file_path, _ = QFileDialog.getSaveFileName(self, "Сохранить результаты", "", "Text Files (*.txt);;All Files (*)")
+
+            if not file_path:
+                return
+
+            with open(file_path, "w", encoding="utf-8") as file:
+                headers = [self.result_table.horizontalHeaderItem(i).text() for i in
+                           range(self.result_table.columnCount())]
+                file.write("\t".join(headers) + "\n")
+
+                for row in range(self.result_table.rowCount()):
+                    row_data = []
+                    for col in range(self.result_table.columnCount()):
+                        item = self.result_table.item(row, col)
+                        row_data.append(item.text() if item else "")
+                    file.write("\t".join(row_data) + "\n")
+
+            QMessageBox.information(self, "Успех", "Результаты успешно сохранены.")
+
+        except PermissionError:
+            self.show_error("Ошибка", "Нет доступа для записи в файл.")
+        except Exception as e:
+            self.show_error("Ошибка", f"Произошла ошибка при сохранении: {str(e)}")
 
     def show_error(self, title, message):
         error_dialog = QMessageBox(self)
