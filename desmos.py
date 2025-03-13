@@ -46,12 +46,12 @@ class MainWindow(QWidget):
         self.setWindowTitle("Поиск корней функции")
         self.setGeometry(100, 100, 600, 600)
 
-        layout = QVBoxLayout()
+        self.main_layout = QVBoxLayout()
 
         # Поле для ввода функции
         self.function_input = QLineEdit(self)
         self.function_input.setPlaceholderText("Введите функцию, например: x**3 - 4*x + 1")
-        layout.addWidget(self.function_input)
+        self.main_layout.addWidget(self.function_input)
 
         # Поля для ввода границ и точности
         self.left_border_input = QLineEdit(self)
@@ -71,15 +71,24 @@ class MainWindow(QWidget):
         input_layout.addWidget(self.left_border_input)
         input_layout.addWidget(self.right_border_input)
         input_layout.addWidget(self.accuracy_input)
-        layout.addLayout(input_layout)
+        self.main_layout.addLayout(input_layout)
 
         button_layout = QHBoxLayout()
-        layout.addLayout(button_layout)
+        self.main_layout.addLayout(button_layout)
 
         # Кнопка для построения графика
         self.draw_graph_button = QPushButton("Построить", self)
         self.draw_graph_button.clicked.connect(self.draw_graph)
         button_layout.addWidget(self.draw_graph_button)
+
+        self.add_function_button = QPushButton("Добавить уравнение")
+        self.add_function_button.clicked.connect(self.add_function)
+        button_layout.addWidget(self.add_function_button)
+
+        self.remove_function_button = QPushButton("Удалить второе уравнение")
+        self.remove_function_button.clicked.connect(self.remove_function)
+        button_layout.addWidget(self.remove_function_button)
+        self.remove_function_button.hide()
 
         self.hints_button = QPushButton("Подсказки по вводу", self)
         button_layout.addWidget(self.hints_button)
@@ -88,19 +97,19 @@ class MainWindow(QWidget):
         # Виджет для отображения графика (PyQtGraph)
         self.graph_widget = pg.PlotWidget()
         self.graph_widget.setBackground('w')  # Устанавливаем белый фон
-        layout.addWidget(self.graph_widget)
+        self.main_layout.addWidget(self.graph_widget)
 
         # Кнопка для вычисления корней
         self.calc_button = QPushButton("Вычислить", self)
         self.calc_button.clicked.connect(self.calculate)
-        layout.addWidget(self.calc_button)
+        self.main_layout.addWidget(self.calc_button)
 
         # Таблица для отображения результатов
         self.result_table = QTableWidget(0, 2)
         self.result_table.setHorizontalHeaderLabels(["Метод", "Найденный корень"])
-        layout.addWidget(self.result_table)
+        self.main_layout.addWidget(self.result_table)
 
-        self.setLayout(layout)
+        self.setLayout(self.main_layout)
 
     def validate_fields(self):
         try:
@@ -146,7 +155,6 @@ class MainWindow(QWidget):
         except Exception as e:
             self.show_error("Ошибка", "Ошибка: Функция введена некорректно, обратитесь к подсказкам по вводу функций.")
 
-
     def draw_graph(self):
         if self.validate_fields() and self.validate_function():
             x_vals = np.linspace(self.left_border, self.right_border, SAMPLES_AMOUNT)
@@ -190,6 +198,18 @@ class MainWindow(QWidget):
                 yMin=min(y_vals),
                 yMax=max(y_vals),
             )
+
+    def add_function(self):
+        self.second_function_input = QLineEdit(self)
+        self.second_function_input.setPlaceholderText("Введите функцию, например: sin(y) - y^2")
+        self.main_layout.insertWidget(self.layout().indexOf(self.draw_graph_button) + 2, self.second_function_input)
+        self.add_function_button.hide()
+        self.remove_function_button.show()
+
+    def remove_function(self):
+        self.add_function_button.show()
+        self.second_function_input.hide()
+        self.remove_function_button.hide()
 
     def calculate(self):
         try:
