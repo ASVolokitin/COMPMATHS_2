@@ -37,9 +37,14 @@ class HintWindow(QDialog):
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
+        self.first_function_text = None
+        self.second_function_text = None
+        self.first_function = None
+        self.second_function = None
         self.left_border = -1
         self.right_border = 1
         self.accuracy = 0.05
+        self.is_solving_system = False
         self.initializeUI()
 
     def initializeUI(self):
@@ -49,9 +54,9 @@ class MainWindow(QWidget):
         self.main_layout = QVBoxLayout()
 
         # Поле для ввода функции
-        self.function_input = QLineEdit(self)
-        self.function_input.setPlaceholderText("Введите функцию, например: x**3 - 4*x + 1")
-        self.main_layout.addWidget(self.function_input)
+        self.first_function_input = QLineEdit(self)
+        self.first_function_input.setPlaceholderText("Введите функцию, например: x**3 - 4*x + 1")
+        self.main_layout.addWidget(self.first_function_input)
 
         # Поля для ввода границ и точности
         self.left_border_input = QLineEdit(self)
@@ -63,9 +68,9 @@ class MainWindow(QWidget):
         self.right_border_input.setValidator(validator)
         self.accuracy_input.setValidator(validator)
 
-        self.left_border_input.setPlaceholderText("Левый предел")
-        self.right_border_input.setPlaceholderText("Правый предел")
-        self.accuracy_input.setPlaceholderText("Точность")
+        self.left_border_input.setPlaceholderText(f"Левый предел ({self.left_border})")
+        self.right_border_input.setPlaceholderText(f"Правый предел ({self.right_border})")
+        self.accuracy_input.setPlaceholderText(f"Точность ({self.accuracy})")
 
         input_layout = QHBoxLayout()
         input_layout.addWidget(self.left_border_input)
@@ -98,6 +103,14 @@ class MainWindow(QWidget):
         self.graph_widget = pg.PlotWidget()
         self.graph_widget.setBackground('w')  # Устанавливаем белый фон
         self.main_layout.addWidget(self.graph_widget)
+        self.graph_widget.getAxis('left').setPen(pg.mkPen(color='k'))  # Черный цвет для оси Y
+        self.graph_widget.getAxis('bottom').setPen(pg.mkPen(color='k'))  # Черный цвет для оси X
+        self.graph_widget.getAxis('left').setTextPen(pg.mkPen(color='k'))  # Черный цвет для текста оси Y
+        self.graph_widget.getAxis('bottom').setTextPen(pg.mkPen(color='k'))  # Черный цвет для текста оси X
+
+        # Настраиваем сетку
+        self.graph_widget.showGrid(x=True, y=True, alpha=0.5)
+        self.graph_widget.getViewBox().setBackgroundColor('w')  # Белый фон внутри графика
 
         # Кнопка для вычисления корней
         self.calc_button = QPushButton("Вычислить", self)
@@ -135,9 +148,42 @@ class MainWindow(QWidget):
             self.show_error("Ошибка диапазона", "Балду какую-то вводишь братик")
             return False
 
+    def try_to_assign_first_function(self):
+        function_text = self.first_function_input.text().strip()
+        if not function_text:
+            self.show_error("Ошибка", "Введите функцию")
+            return False
+        try:
+            x_sym = sp.symbols('x')
+            self.first_function = sp.lambdify(x_sym, parse_function(function_text, 'x'), 'numpy')
+            self.first_function_text = function_text
+            if self.first_function is None:
+                self.show_error("Ошибка", "Не удалось распознать функцию, обратитесь к подсказкам по вводу.")
+                return False
+            return True
+        except Exception as e:
+            self.show_error("Ошибка", "Ошибка: Функция введена некорректно, обратитесь к подсказкам по вводу функций.")
+            return False
+
+    def try_to_assign_second_function(self):
+        function_text = self.second_function_input.text().strip()
+        if not function_text:
+            self.show_error("Ошибка", "Введите функцию")
+            return False
+        try:
+            y_sym = sp.symbols('x')
+            self.second_function = sp.lambdify(y_sym, parse_function(function_text, 'x'), 'numpy')
+            self.second_function_text = function_text
+            if self.second_function is None:
+                self.show_error("Ошибка", "Не удалось распознать функцию, обратитесь к подсказкам по вводу.")
+                return False
+            return True
+        except Exception as e:
+            self.show_error("Ошибка", "Ошибка: Функция введена некорректно, обратитесь к подсказкам по вводу функций.")
+            return False
 
     def validate_function(self):
-        function_text = self.function_input.text().strip()
+        function_text = self.second_function_input.text().strip()
         if not function_text:
             self.show_error("Ошибка", "Введите функцию")
             return False
@@ -147,78 +193,122 @@ class MainWindow(QWidget):
             self.show_error("Ошибка", "Не удалось распознать функцию, обратитесь к подсказкам по вводу.")
             return False
 
-        try:
-            x_sym = sp.symbols('x')
-            self.func = sp.lambdify(x_sym, f, 'numpy')
-            self.function_text = function_text
-            return True
-        except Exception as e:
-            self.show_error("Ошибка", "Ошибка: Функция введена некорректно, обратитесь к подсказкам по вводу функций.")
+    def validate_all(self):
+        if self.validate_fields():
+            if self.try_to_assign_first_function():
+                if self.is_solving_system:
+                    return self.try_to_assign_second_function()
+                return True
+            return False
+        return False
+
 
     def draw_graph(self):
-        if self.validate_fields() and self.validate_function():
+        if self.validate_all():
             x_vals = np.linspace(self.left_border, self.right_border, SAMPLES_AMOUNT)
-            try:
-                y_vals = self.func(x_vals)
-            except (OverflowError, ValueError, TypeError) as e:
-                self.show_error("Ошибка вычисления", "Функция принимает слишком большие значения. Измените интервал.")
-                return
+            if not self.is_solving_system:
+                try:
+                    y_vals = self.first_function(x_vals)
+                    self.graph_widget.clear()
+                    self.graph_widget.plot(x_vals, y_vals, pen=pg.mkPen(color='b', width=2),
+                                           name=self.first_function_text)
+                    self.graph_widget.setXRange(self.left_border, self.right_border)
+                    self.graph_widget.setLabel('left', 'y')
+                    self.graph_widget.setLabel('bottom', 'x')
+                    self.graph_widget.setTitle(f"График функции: {self.first_function_text}",
+                                               color='k')  # Черный цвет заголовка
 
-            # Очищаем предыдущий график
-            self.graph_widget.clear()
+                    # Устанавливаем границы, за которые нельзя выходить
+                    view_box = self.graph_widget.getViewBox()
+                    view_box.setLimits(
+                        xMin=self.left_border,
+                        xMax=self.right_border,
+                        yMin=min(y_vals),
+                        yMax=max(y_vals),
+                    )
+                except (OverflowError) as e:
+                        self.show_error("Ошибка вычисления",
+                                        "Функция принимает слишком большие значения. Измените интервал.")
+                        return
+                except (TypeError, NameError) as e:
+                    self.show_error("Ошибка ввода", "Некорректный формат формулы, воспользуйтесь подсказками")
 
-            # Настраиваем цвета осей и текста
-            self.graph_widget.getAxis('left').setPen(pg.mkPen(color='k'))  # Черный цвет для оси Y
-            self.graph_widget.getAxis('bottom').setPen(pg.mkPen(color='k'))  # Черный цвет для оси X
-            self.graph_widget.getAxis('left').setTextPen(pg.mkPen(color='k'))  # Черный цвет для текста оси Y
-            self.graph_widget.getAxis('bottom').setTextPen(pg.mkPen(color='k'))  # Черный цвет для текста оси X
 
-            # Настраиваем сетку
-            self.graph_widget.showGrid(x=True, y=True, alpha=0.5)
-            self.graph_widget.getViewBox().setBackgroundColor('w')  # Белый фон внутри графика
+            else:
+                if self.try_to_assign_second_function():
+                    try:
+                        # Вычисляем значения для первой функции
+                        y_vals_first = self.first_function(x_vals)
 
-            # Рисуем новый график
-            self.graph_widget.plot(x_vals, y_vals, pen=pg.mkPen(color='b', width=2), name=self.function_text)
-            self.graph_widget.setXRange(self.left_border, self.right_border)
-            self.graph_widget.setLabel('left', 'y')
-            self.graph_widget.setLabel('bottom', 'x')
-            self.graph_widget.setTitle(f"График функции: {self.function_text}", color='k')  # Черный цвет заголовка
+                        # Вычисляем значения для второй функции
+                        y_vals_second = self.second_function(x_vals)
 
-            # # Добавляем вертикальные пунктирные линии на границах интервала
-            # left_line = pg.InfiniteLine(pos=self.left_border, angle=90,
-            #                             pen=pg.mkPen(color='r', width=1, style=pg.PenStyle.DashLine))
-            # right_line = pg.InfiniteLine(pos=self.right_border, angle=90,
-            #                              pen=pg.mkPen(color='r', width=1, style=pg.PenStyle.DashLine))
+                        # Очищаем график
+                        self.graph_widget.clear()
 
-            # Устанавливаем границы, за которые нельзя выходить
-            view_box = self.graph_widget.getViewBox()
-            view_box.setLimits(
-                xMin=self.left_border,
-                xMax=self.right_border,
-                yMin=min(y_vals),
-                yMax=max(y_vals),
-            )
+                        # Отрисовываем первую функцию (синий цвет)
+                        self.graph_widget.plot(x_vals, y_vals_first, pen=pg.mkPen(color='b', width=2),
+                                               name=self.first_function_text)
+
+                        # Отрисовываем вторую функцию (красный цвет)
+                        self.graph_widget.plot(x_vals, y_vals_second, pen=pg.mkPen(color='r', width=2),
+                                               name=self.second_function_text)
+
+                        # Устанавливаем диапазон по оси X
+                        self.graph_widget.setXRange(self.left_border, self.right_border)
+
+                        # Устанавливаем подписи осей
+                        self.graph_widget.setLabel('left', 'y')
+                        self.graph_widget.setLabel('bottom', 'x')
+
+                        # Устанавливаем заголовок с именами обеих функций
+                        self.graph_widget.setTitle(
+                            f"Графики функций: {self.first_function_text} и {self.second_function_text}",
+                            color='k')  # Черный цвет заголовка
+
+                        # Устанавливаем границы для оси Y, учитывая обе функции
+                        view_box = self.graph_widget.getViewBox()
+                        view_box.setLimits(
+                            xMin=self.left_border,
+                            xMax=self.right_border,
+                            yMin=min(min(y_vals_first), min(y_vals_second)),  # Минимум из двух функций
+                            yMax=max(max(y_vals_first), max(y_vals_second)),  # Максимум из двух функций
+                        )
+                    except OverflowError as e:
+                        self.show_error("Ошибка вычисления",
+                                        "Функция принимает слишком большие значения. Измените интервал.")
+                        return
+                    except (TypeError, NameError) as e:
+                        self.show_error("Ошибка ввода", "Некорректный формат формулы, воспользуйтесь подсказками")
+
+        else: print("Ошибка при парсинге аргументов.")
 
     def add_function(self):
         self.second_function_input = QLineEdit(self)
-        self.second_function_input.setPlaceholderText("Введите функцию, например: sin(y) - y^2")
+        self.second_function_input.setPlaceholderText("Введите функцию, например: sin(x) - x^2")
         self.main_layout.insertWidget(self.layout().indexOf(self.draw_graph_button) + 2, self.second_function_input)
         self.add_function_button.hide()
         self.remove_function_button.show()
+        self.is_solving_system = True
 
     def remove_function(self):
         self.add_function_button.show()
         self.second_function_input.hide()
         self.remove_function_button.hide()
+        self.second_function = None
+        self.second_function_text = None
+        self.is_solving_system = False
+        self.draw_graph()
 
     def calculate(self):
         try:
-            if self.validate_fields() and self.validate_function():
+            if self.validate_all():
                 self.draw_graph()
-                root_amount = root_counter(self.left_border, self.right_border, self.func)
-                if root_amount > 1:
-                    self.show_error("Ошибка диапазона", "Для корректной работы необходимо выбрать интервал, содержащий только 1 корень.")
-                    return
+                if not self.is_solving_system:
+                    root_amount = root_counter(self.left_border, self.right_border, self.first_function)
+                    if root_amount > 1:
+                        self.show_error("Ошибка диапазона", "Для корректной работы необходимо выбрать интервал, содержащий только 1 корень.")
+                        return False
         except (TypeError, AttributeError):
             self.show_error("Ошибка", "Ошибка: Функция введена некорректно, обратитесь к подсказкам по вводу функций.")
 

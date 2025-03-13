@@ -3,8 +3,8 @@ import sympy as sp
 ABOUT_NULL = 1e-6
 MAX_INTERVAL_LENGTH = 1000000
 
-def parse_function(func_str):
-    x = sp.symbols('x')
+def parse_function(func_str, variable):
+    x = sp.symbols(variable)
     try:
         func = sp.sympify(func_str)
         return func
@@ -30,6 +30,19 @@ def root_counter(a, b, func):
             root_cnt += 1
         prev = cur
         x += length
-        # print(x)
     print("Проход завершён")
     return root_cnt
+
+def half_division(a, b, e, func):
+    n = 0 # Счётчик итераций
+    x = (a + b) / 2
+    while abs(b - a) >= e:
+        fx = func(x)
+        if abs(fx) < e: return x
+
+        if func(a) * fx < 0: b = x
+        else: a = x
+        x = (a + b) / 2
+        n += 1
+
+    return x
