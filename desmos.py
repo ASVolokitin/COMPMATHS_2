@@ -1,3 +1,8 @@
+# Добавить адаптивный дизайн
+# Отладить вывод результатов и сохранение их в файл
+
+
+
 import sys
 import numpy as np
 import sympy as sp
@@ -7,8 +12,9 @@ from PyQt6.QtWidgets import (QApplication, QWidget, QLineEdit, QPushButton, QLab
 from PyQt6.QtGui import QDoubleValidator, QColor
 import pyqtgraph as pg
 
-from calcs import parse_function, root_counter, half_division, newton
+from calcs import parse_function, root_counter, half_division, newton, simple_iteration
 
+MIN_INTERVAL_LENGTH = 0.5
 MAX_INTERVAL_LENGTH = 1000000
 SAMPLES_AMOUNT = 10000
 
@@ -50,7 +56,7 @@ class MainWindow(QWidget):
 
     def initializeUI(self):
         self.setWindowTitle("Поиск корней функции")
-        self.setGeometry(100, 100, 600, 600)
+        self.setGeometry(100, 100, 500, 700)
 
         self.main_layout = QVBoxLayout()
 
@@ -119,8 +125,8 @@ class MainWindow(QWidget):
         self.main_layout.addWidget(self.calc_button)
 
         # Таблица для отображения результатов
-        self.result_table = QTableWidget(0, 2)
-        self.result_table.setHorizontalHeaderLabels(["Метод", "Найденный корень"])
+        self.result_table = QTableWidget(0, 4)
+        self.result_table.setHorizontalHeaderLabels(["Метод", "Количество итераций", "Найденный корень", "Значение функции"])
         self.main_layout.addWidget(self.result_table)
         self.result_table.resizeColumnsToContents()
         self.result_table.horizontalHeader().setStretchLastSection(True)
@@ -142,7 +148,10 @@ class MainWindow(QWidget):
                 self.show_error("Ошибка диапазона", "Левый предел должен быть меньше правого.")
                 return False
             if right_border - left_border > MAX_INTERVAL_LENGTH:
-                self.show_error("Ошибка диапазона", "Выбран слишком широкий интервал.")
+                self.show_error("Ошибка диапазона", f"Выбран слишком широкий интервал (максимум = {MAX_INTERVAL_LENGTH}).")
+                return False
+            if right_border - left_border < MIN_INTERVAL_LENGTH:
+                self.show_error(f"Ошибка диапазона", f"Выбран слишком узкий интервал (минимум = {MIN_INTERVAL_LENGTH}).")
                 return False
             if accuracy <= 0:
                 self.show_error("Ошибка точности", "Точность должна быть положительным числом.")
@@ -157,7 +166,7 @@ class MainWindow(QWidget):
             return False
 
     def try_to_assign_first_function(self):
-        function_text = self.first_function_input.text().strip()
+        function_text = self.first_function_input.text().strip().replace(",", ".")
         if not function_text:
             self.show_error("Ошибка", "Введите функцию")
             return False
@@ -174,7 +183,7 @@ class MainWindow(QWidget):
             return False
 
     def try_to_assign_second_function(self):
-        function_text = self.second_function_input.text().strip()
+        function_text = self.second_function_input.text().strip().replace(",", ".")
         if not function_text:
             self.show_error("Ошибка", "Введите функцию")
             return False
@@ -309,12 +318,21 @@ class MainWindow(QWidget):
         self.draw_graph()
 
     def update_result_table(self, results):
+        """
+        Обновляет таблицу результатов, предварительно очищая её.
+        :param results: Список кортежей вида [("Метод", итерации, корень, f(корень)), ...]
+        """
         self.result_table.clearContents()
         self.result_table.setRowCount(0)
         self.result_table.setRowCount(len(results))
-        for row, (method, root) in enumerate(results):
-            self.result_table.setItem(row, 0, QTableWidgetItem(method))
-            self.result_table.setItem(row, 1, QTableWidgetItem(f"{root:.6f}"))
+
+        print(results)
+        for row, (data) in enumerate(results):
+            print("data :", row, data)
+            self.result_table.setItem(row, 0, QTableWidgetItem(data[0]))
+            self.result_table.setItem(row, 1, QTableWidgetItem(str(data[1]["iter_amount"]) if data[1]["status_msg"] == "OK" else data[1]["status_msg"]))
+            self.result_table.setItem(row, 2, QTableWidgetItem("Не найден" if data[1]['root'] is None else f"{data[1]['root']:.15f}"))
+            self.result_table.setItem(row, 3, QTableWidgetItem("Метод не применим" if data[1]['value'] is None else f"{data[1]['value']:.15f}"))
         self.result_table.resizeColumnsToContents()
         self.result_table.horizontalHeader().setStretchLastSection(True)
 
@@ -325,10 +343,13 @@ class MainWindow(QWidget):
                 if not self.is_solving_system:
                     root_amount = root_counter(self.left_border, self.right_border, self.first_function)
                     if root_amount != 1:
-                        self.show_error("Ошибка диапазона", "Для корректной работы необходимо выбрать интервал, содержащий только 1 корень.")
+                        self.result_table.clearContents()
+                        self.result_table.setRowCount(0)
+                        self.show_error("Ошибка диапазона", "Для корректной работы необходимо выбрать интервал, содержащий ровно 1 корень.")
                         return False
                     else:
-                        self.update_result_table(self.calculate_one())
+                        # self.update_result_table(self.calculate_one())
+                        self.calculate_one()
 
 
 
@@ -339,11 +360,12 @@ class MainWindow(QWidget):
         results = []
         results.append(("Метод половинного деления", half_division(self.left_border, self.right_border, self.accuracy, self.first_function)))
         results.append(("Метод Ньютона", newton(self.left_border, self.right_border, self.accuracy, self.first_function)))
+        results.append(("Метод простой итерации", simple_iteration(self.left_border, self.right_border, self.accuracy, self.first_function)))
         self.save_button.show()
+        self.update_result_table(results)
         return results
 
     def save_results(self):
-
         try:
             if self.result_table.rowCount() == 0:
                 self.show_error("Ошибка", "Нет данных для сохранения.")

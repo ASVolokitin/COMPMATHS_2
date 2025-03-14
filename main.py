@@ -89,35 +89,35 @@ def root_counter(a, b):
         # print(x)
     return root_cnt
 
-def half_division(a, b, e):
-    n = 0 # Счётчик итераций
-    x = (a + b) / 2
-    while abs(b - a) >= e:
-        fx = func(x)
-        if abs(fx) < e: return x
+# def half_division(a, b, e):
+#     n = 0 # Счётчик итераций
+#     x = (a + b) / 2
+#     while abs(b - a) >= e:
+#         fx = func(x)
+#         if abs(fx) < e: return x
+#
+#         if func(a) * fx < 0: b = x
+#         else: a = x
+#         x = (a + b) / 2
+#         n += 1
+#
+#     return x
 
-        if func(a) * fx < 0: b = x
-        else: a = x
-        x = (a + b) / 2
-        n += 1
-
-    return x
-
-def newton(a, b, e):
-    x = (b + a) / 2
-    for i in range(MAX_INTERVAL_LENGTH):
-        df = derivative(func, x)
-
-        if abs(df) < ABOUT_NULL:
-            print("Производная слишком мала, метод Ньютона не применим.")
-            return None
-
-        x_new = x - func(x) / df
-        if abs(x_new - x) < e:
-            return x_new
-
-        x = x_new
-    return x
+# def newton(a, b, e):
+#     x = (b + a) / 2
+#     for i in range(MAX_INTERVAL_LENGTH):
+#         df = derivative(func, x)
+#
+#         if abs(df) < ABOUT_NULL:
+#             print("Производная слишком мала, метод Ньютона не применим.")
+#             return None
+#
+#         x_new = x - func(x) / df
+#         if abs(x_new - x) < e:
+#             return x_new
+#
+#         x = x_new
+#     return x
 
 def main():
     print("Выберите функцию для анализа (введите число):")
