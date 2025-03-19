@@ -1,8 +1,6 @@
 # Добавить адаптивный дизайн
 # Отладить вывод результатов и сохранение их в файл
 
-
-
 import sys
 import numpy as np
 import sympy as sp
@@ -12,7 +10,8 @@ from PyQt6.QtWidgets import (QApplication, QWidget, QLineEdit, QPushButton, QLab
 from PyQt6.QtGui import QDoubleValidator, QColor
 import pyqtgraph as pg
 
-from calcs import parse_function, root_counter, half_division, newton, simple_iteration
+from calcs import parse_single_function, root_counter, half_division, newton, simple_iteration, \
+    parse_multi_variable_function
 
 MIN_INTERVAL_LENGTH = 0.5
 MAX_INTERVAL_LENGTH = 1000000
@@ -29,6 +28,7 @@ class HintWindow(QDialog):
         self.hint_text = QTextEdit(self)
         self.hint_text.setReadOnly(True)  # Запрещаем редактирование
         self.hint_text.setPlainText(
+            "Задавайте уравнения в виде функций f(x), таких что f(x) = 0.\n\n"
             "Примеры ввода функций:\n\n"
             "1. Полиномы: x**2 - 4*x + 4\n"
             "2. Тригонометрические функции: sin(x) + cos(x)\n"
@@ -44,12 +44,25 @@ class HintWindow(QDialog):
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.first_function_text = None
+        self.first_system_function_text = None
+        self.first_system_function = None
+        self.draw_graph_button = None
+        self.x_left_border_input = None
+        self.x_right_border_input = None
+        self.y_left_border_input = None
+        self.y_right_border_input = None
+        self.first_system_function_input = None
+        self.second_system_function_input = None
+        self.second_system_function_text = None
+        self.second_system_function = None
+        self.single_function_text = None
         self.second_function_text = None
-        self.first_function = None
+        self.single_function = None
         self.second_function = None
-        self.left_border = -1
-        self.right_border = 1
+        self.x_left_border = -1
+        self.x_right_border = 1
+        self.y_left_border = -1
+        self.y_right_border = 1
         self.accuracy = 0.05
         self.is_solving_system = False
         self.initializeUI()
@@ -61,29 +74,49 @@ class MainWindow(QWidget):
         self.main_layout = QVBoxLayout()
 
         # Поле для ввода функции
-        self.first_function_input = QLineEdit(self)
-        self.first_function_input.setPlaceholderText("Введите функцию, например: x**3 - 4*x + 1")
-        self.main_layout.addWidget(self.first_function_input)
+        self.single_function_input = QLineEdit(self)
+        self.single_function_input.setPlaceholderText("Введите функцию, например: x**3 - 4*x + 1")
+        self.main_layout.addWidget(self.single_function_input)
 
-        # Поля для ввода границ и точности
-        self.left_border_input = QLineEdit(self)
-        self.right_border_input = QLineEdit(self)
+        self.first_system_function_input = QLineEdit(self)
+        self.first_system_function_input.setPlaceholderText("Введите функцию, например: x**3 - 4*y + 1")
+        self.main_layout.addWidget(self.first_system_function_input)
+        self.first_system_function_input.hide()
+
+        self.second_system_function_input = QLineEdit(self)
+        self.second_system_function_input.setPlaceholderText("Введите функцию, например: sin(x) - y**2")
+        self.main_layout.addWidget(self.second_system_function_input)
+        self.second_system_function_input.hide()
+
+        self.x_left_border_input = QLineEdit(self)
+        self.x_right_border_input = QLineEdit(self)
         self.accuracy_input = QLineEdit(self)
+        self.y_left_border_input = QLineEdit(self)
+        self.y_right_border_input = QLineEdit(self)
 
         validator = QDoubleValidator()
-        self.left_border_input.setValidator(validator)
-        self.right_border_input.setValidator(validator)
+        self.x_left_border_input.setValidator(validator)
+        self.x_right_border_input.setValidator(validator)
         self.accuracy_input.setValidator(validator)
+        self.y_left_border_input.setValidator(validator)
+        self.y_right_border_input.setValidator(validator)
 
-        self.left_border_input.setPlaceholderText(f"Левый предел ({self.left_border})")
-        self.right_border_input.setPlaceholderText(f"Правый предел ({self.right_border})")
+        self.x_left_border_input.setPlaceholderText(f"Левый предел ({self.x_left_border})")
+        self.x_right_border_input.setPlaceholderText(f"Правый предел ({self.x_right_border})")
         self.accuracy_input.setPlaceholderText(f"Точность ({self.accuracy})")
+        self.y_left_border_input.setPlaceholderText(f"Левый предел для y ({self.y_left_border})")
+        self.y_right_border_input.setPlaceholderText(f"Правый предел для y ({self.y_right_border})")
 
-        input_layout = QHBoxLayout()
-        input_layout.addWidget(self.left_border_input)
-        input_layout.addWidget(self.right_border_input)
-        input_layout.addWidget(self.accuracy_input)
-        self.main_layout.addLayout(input_layout)
+        x_input_layout = QHBoxLayout()
+        x_input_layout.addWidget(self.x_left_border_input)
+        x_input_layout.addWidget(self.x_right_border_input)
+        x_input_layout.addWidget(self.accuracy_input)
+        self.main_layout.addLayout(x_input_layout)
+
+        y_input_layout = QHBoxLayout()
+        y_input_layout.addWidget(self.y_left_border_input)
+        y_input_layout.addWidget(self.y_right_border_input)
+        self.main_layout.addLayout(y_input_layout)
 
         button_layout = QHBoxLayout()
         self.main_layout.addLayout(button_layout)
@@ -100,6 +133,9 @@ class MainWindow(QWidget):
         self.remove_function_button = QPushButton("Удалить второе уравнение")
         self.remove_function_button.clicked.connect(self.remove_function)
         button_layout.addWidget(self.remove_function_button)
+
+        self.y_left_border_input.hide()
+        self.y_right_border_input.hide()
         self.remove_function_button.hide()
 
         self.hints_button = QPushButton("Подсказки по вводу", self)
@@ -138,10 +174,10 @@ class MainWindow(QWidget):
 
         self.setLayout(self.main_layout)
 
-    def validate_fields(self):
+    def validate_single_fields(self):
         try:
-            left_border = float(self.left_border_input.text().replace(",", ".")) if self.left_border_input.text() else self.left_border
-            right_border = float(self.right_border_input.text().replace(",", ".")) if self.right_border_input.text() else self.right_border
+            left_border = float(self.x_left_border_input.text().replace(",", ".")) if self.x_left_border_input.text() else self.x_left_border
+            right_border = float(self.x_right_border_input.text().replace(",", ".")) if self.x_right_border_input.text() else self.x_right_border
             accuracy = float(self.accuracy_input.text().replace(",", ".")) if self.accuracy_input.text() else self.accuracy
 
             if left_border >= right_border:
@@ -157,24 +193,26 @@ class MainWindow(QWidget):
                 self.show_error("Ошибка точности", "Точность должна быть положительным числом.")
                 return False
 
-            self.left_border = left_border
-            self.right_border = right_border
+            self.x_left_border = left_border
+            self.x_right_border = right_border
             self.accuracy = accuracy
             return True
         except:
             self.show_error("Ошибка диапазона", "Балду какую-то вводишь братик")
             return False
 
-    def try_to_assign_first_function(self):
-        function_text = self.first_function_input.text().strip().replace(",", ".")
+    def try_to_assign_single_function(self):
+        function_text = self.single_function_input.text().strip().replace(",", ".")
+        if "=" in function_text:
+            self.show_error("Ошибка", "Задавайте уравнение функцией f(x), где f(x) = 0.")
+            return False
         if not function_text:
             self.show_error("Ошибка", "Введите функцию")
             return False
         try:
-            x_sym = sp.symbols('x')
-            self.first_function = sp.lambdify(x_sym, parse_function(function_text, 'x'), 'numpy')
-            self.first_function_text = function_text
-            if self.first_function is None:
+            self.single_function = sp.lambdify(sp.symbols('x'), parse_single_function(function_text, 'x'), 'numpy')
+            self.single_function_text = function_text
+            if self.single_function is None:
                 self.show_error("Ошибка", "Не удалось распознать функцию, обратитесь к подсказкам по вводу.")
                 return False
             return True
@@ -182,14 +220,74 @@ class MainWindow(QWidget):
             self.show_error("Ошибка", "Ошибка: Функция введена некорректно, обратитесь к подсказкам по вводу функций.")
             return False
 
+    # def try_to_assign_first_function(self):
+    #     function_text = self.single_function_input.text().strip().replace(",", ".")
+    #     if "=" in function_text:
+    #         self.show_error("Ошибка", "Задавайте уравнение функцией f(x), где f(x) = 0.")
+    #         return False
+    #     if not function_text:
+    #         self.show_error("Ошибка", "Введите функцию")
+    #         return False
+    #     try:
+    #         x_sym = sp.symbols('x')
+    #         self.single_function = sp.lambdify(x_sym, parse_single_function(function_text, 'x'), 'numpy')
+    #         self.single_function_text = function_text
+    #         if self.single_function is None:
+    #             self.show_error("Ошибка", "Не удалось распознать функцию, обратитесь к подсказкам по вводу.")
+    #             return False
+    #         return True
+    #     except Exception as e:
+    #         self.show_error("Ошибка", "Ошибка: Функция введена некорректно, обратитесь к подсказкам по вводу функций.")
+    #         return False
+
+    def try_to_assign_system(self):
+        function_text = self.first_system_function_input.text().strip().replace(",", ".")
+        if "=" in function_text:
+            self.show_error("Ошибка", "Задавайте уравнение функцией f(x, y), где f(x, y) = 0.")
+            return False
+        if not function_text:
+            self.show_error("Ошибка", "Введите функцию")
+            return False
+        try:
+            parsed_func = parse_multi_variable_function(function_text, ('x', 'y'))
+            if parsed_func is not None:
+                self.first_system_function = sp.lambdify(sp.symbols('x y'), parsed_func, 'numpy')
+                self.first_system_function_text = function_text
+                if self.first_system_function is None:
+                    self.show_error("Ошибка", "Не удалось распознать функцию, обратитесь к подсказкам по вводу.")
+                    return False
+                function_text = self.second_system_function_input.text().strip().replace(",", ".")
+                if "=" in function_text:
+                    self.show_error("Ошибка", "Задавайте уравнение функцией f(x, y), где f(x, y) = 0.")
+                    return False
+                if not function_text:
+                    self.show_error("Ошибка", "Введите функцию")
+                    return False
+                parsed_func = parse_multi_variable_function(function_text, ('x', 'y'))
+                if parsed_func is not None:
+                    self.second_system_function = sp.lambdify(sp.symbols('x y'), parsed_func, 'numpy')
+                    self.second_system_function_text = function_text
+                    if self.first_system_function is None:
+                        self.show_error("Ошибка", "Не удалось распознать функцию, обратитесь к подсказкам по вводу.")
+                        return False
+                return True
+            else:
+                raise RuntimeError
+        except (Exception, RuntimeError) as e:
+            self.show_error("Ошибка", "Не удалось распознать функцию, обратитесь к подсказкам по вводу.")
+
+
     def try_to_assign_second_function(self):
-        function_text = self.second_function_input.text().strip().replace(",", ".")
+        function_text = self.second_system_function_input.text().strip().replace(",", ".")
+        if "=" in function_text:
+            self.show_error("Ошибка", "Задавайте уравнение функцией f(x), где f(x) = 0.")
+            return False
         if not function_text:
             self.show_error("Ошибка", "Введите функцию")
             return False
         try:
             y_sym = sp.symbols('x')
-            self.second_function = sp.lambdify(y_sym, parse_function(function_text, 'x'), 'numpy')
+            self.second_function = sp.lambdify(y_sym, parse_single_function(function_text, 'x'), 'numpy')
             self.second_function_text = function_text
             if self.second_function is None:
                 self.show_error("Ошибка", "Не удалось распознать функцию, обратитесь к подсказкам по вводу.")
@@ -199,129 +297,125 @@ class MainWindow(QWidget):
             self.show_error("Ошибка", "Ошибка: Функция введена некорректно, обратитесь к подсказкам по вводу функций.")
             return False
 
-    def validate_function(self):
-        function_text = self.second_function_input.text().strip()
-        if not function_text:
-            self.show_error("Ошибка", "Введите функцию")
-            return False
-
-        f = parse_function(function_text)
-        if f is None:
-            self.show_error("Ошибка", "Не удалось распознать функцию, обратитесь к подсказкам по вводу.")
-            return False
+    # def validate_all(self):
+    #     if self.validate_fields():
+    #         if self.try_to_assign_first_function():
+    #             if self.is_solving_system:
+    #                 return self.try_to_assign_second_function()
+    #             return True
+    #         return False
+    #     return False
 
     def validate_all(self):
-        if self.validate_fields():
-            if self.try_to_assign_first_function():
-                if self.is_solving_system:
-                    return self.try_to_assign_second_function()
-                return True
-            return False
-        return False
+        if not self.is_solving_system:
+            return self.validate_single_fields() and self.try_to_assign_single_function()
+        else:
+            return self.try_to_assign_system()
 
 
     def draw_graph(self):
         if self.validate_all():
-            x_vals = np.linspace(self.left_border, self.right_border, SAMPLES_AMOUNT)
+            x_vals = np.linspace(self.x_left_border, self.x_right_border, SAMPLES_AMOUNT)
             if not self.is_solving_system:
                 try:
-                    y_vals = self.first_function(x_vals)
+                    y_vals = self.single_function(x_vals)
                     self.graph_widget.clear()
-                    self.graph_widget.plot(x_vals, y_vals, pen=pg.mkPen(color='b', width=2),
-                                           name=self.first_function_text)
-                    self.graph_widget.setXRange(self.left_border, self.right_border)
+                    self.graph_widget.plot(x_vals, y_vals, pen=pg.mkPen(color='b', width=2), name=self.single_function_text)
+                    self.graph_widget.setXRange(self.x_left_border, self.x_right_border)
                     self.graph_widget.setLabel('left', 'y')
                     self.graph_widget.setLabel('bottom', 'x')
-                    self.graph_widget.setTitle(f"График функции: {self.first_function_text}",
+                    self.graph_widget.setTitle(f"График функции: {self.single_function_text}",
                                                color='k')  # Черный цвет заголовка
 
                     # Устанавливаем границы, за которые нельзя выходить
                     view_box = self.graph_widget.getViewBox()
                     view_box.setLimits(
-                        xMin=self.left_border,
-                        xMax=self.right_border,
+                        xMin=self.x_left_border,
+                        xMax=self.x_right_border,
                         yMin=min(y_vals),
                         yMax=max(y_vals),
                     )
                 except (OverflowError) as e:
-                        self.show_error("Ошибка вычисления",
-                                        "Функция принимает слишком большие значения. Измените интервал.")
-                        return
-                except (TypeError, NameError) as e:
-                    self.show_error("Ошибка ввода", "Некорректный формат формулы, воспользуйтесь подсказками")
-
-
+                    self.show_error("Ошибка вычисления",
+                                    "Функция принимает слишком большие значения. Измените интервал.")
+                    return
+                # except (TypeError, NameError) as e:
+                #     self.show_error("Ошибка ввода", "Некорректный формат формулы, воспользуйтесь подсказками")
             else:
-                if self.try_to_assign_second_function():
-                    try:
-                        # Вычисляем значения для первой функции
-                        y_vals_first = self.first_function(x_vals)
+                print(self.first_system_function(1, 1))
+                print(self.second_system_function(1, 1))
+                # try:
 
-                        # Вычисляем значения для второй функции
-                        y_vals_second = self.second_function(x_vals)
+                # Здесь нужно графически изобразить систему, код ниже - не актуальный
 
-                        # Очищаем график
-                        self.graph_widget.clear()
-
-                        # Отрисовываем первую функцию (синий цвет)
-                        self.graph_widget.plot(x_vals, y_vals_first, pen=pg.mkPen(color='b', width=2),
-                                               name=self.first_function_text)
-
-                        # Отрисовываем вторую функцию (красный цвет)
-                        self.graph_widget.plot(x_vals, y_vals_second, pen=pg.mkPen(color='r', width=2),
-                                               name=self.second_function_text)
-
-                        # Устанавливаем диапазон по оси X
-                        self.graph_widget.setXRange(self.left_border, self.right_border)
-
-                        # Устанавливаем подписи осей
-                        self.graph_widget.setLabel('left', 'y')
-                        self.graph_widget.setLabel('bottom', 'x')
-
-                        # Устанавливаем заголовок с именами обеих функций
-                        self.graph_widget.setTitle(
-                            f"Графики функций: {self.first_function_text} и {self.second_function_text}",
-                            color='k')  # Черный цвет заголовка
-
-                        # Устанавливаем границы для оси Y, учитывая обе функции
-                        view_box = self.graph_widget.getViewBox()
-                        view_box.setLimits(
-                            xMin=self.left_border,
-                            xMax=self.right_border,
-                            yMin=min(min(y_vals_first), min(y_vals_second)),  # Минимум из двух функций
-                            yMax=max(max(y_vals_first), max(y_vals_second)),  # Максимум из двух функций
-                        )
-                    except OverflowError as e:
-                        self.show_error("Ошибка вычисления",
-                                        "Функция принимает слишком большие значения. Измените интервал.")
-                        return
-                    except (TypeError, NameError) as e:
-                        self.show_error("Ошибка ввода", "Некорректный формат формулы, воспользуйтесь подсказками")
-
-        else: print("Ошибка при парсинге аргументов.")
-
+                #     # Вычисляем значения для первой функции
+                #     y_vals_first = self.first_system_function(x_vals)
+                #
+                #     # Вычисляем значения для второй функции
+                #     y_vals_second = self.second_system_function(x_vals)
+                #
+                #     # Очищаем график
+                #     self.graph_widget.clear()
+                #
+                #     # Отрисовываем первую функцию (синий цвет)
+                #     self.graph_widget.plot(x_vals, y_vals_first, pen=pg.mkPen(color='b', width=2),
+                #                            name=self.first_function_text)
+                #
+                #     # Отрисовываем вторую функцию (красный цвет)
+                #     self.graph_widget.plot(x_vals, y_vals_second, pen=pg.mkPen(color='r', width=2),
+                #                            name=self.second_function_text)
+                #
+                #     # Устанавливаем диапазон по оси X
+                #     self.graph_widget.setXRange(self.x_left_border, self.x_right_border)
+                #
+                #     # Устанавливаем подписи осей
+                #     self.graph_widget.setLabel('left', 'y')
+                #     self.graph_widget.setLabel('bottom', 'x')
+                #
+                #     # Устанавливаем заголовок с именами обеих функций
+                #     self.graph_widget.setTitle(
+                #         f"Графики функций: {self.first_function_text} и {self.second_function_text}",
+                #         color='k')  # Черный цвет заголовка
+                #
+                #     # Устанавливаем границы для оси Y, учитывая обе функции
+                #     view_box = self.graph_widget.getViewBox()
+                #     view_box.setLimits(
+                #         xMin=self.x_left_border,
+                #         xMax=self.x_right_border,
+                #         yMin=min(min(y_vals_first), min(y_vals_second)),  # Минимум из двух функций
+                #         yMax=max(max(y_vals_first), max(y_vals_second)),  # Максимум из двух функций
+                #     )
+                # except OverflowError as e:
+                #     self.show_error("Ошибка вычисления",
+                #                     "Функция принимает слишком большие значения. Измените интервал.")
+                #     return
+                # except (TypeError, NameError) as e:
+                #     self.show_error("Ошибка ввода", "Некорректный формат формулы, воспользуйтесь подсказками")
+        else:
+            self.show_error("Ошибка", "Неверный формат функции.")
     def add_function(self):
-        self.second_function_input = QLineEdit(self)
-        self.second_function_input.setPlaceholderText("Введите функцию, например: sin(x) - x^2")
-        self.main_layout.insertWidget(self.layout().indexOf(self.draw_graph_button) + 2, self.second_function_input)
-        self.add_function_button.hide()
+        self.single_function_input.hide()
+        self.first_system_function_input.show()
+        self.second_system_function_input.show()
         self.remove_function_button.show()
+        self.y_left_border_input.show()
+        self.y_right_border_input.show()
+        self.add_function_button.hide()
         self.is_solving_system = True
 
     def remove_function(self):
         self.add_function_button.show()
-        self.second_function_input.hide()
+        self.single_function_input.show()
+        self.first_system_function_input.hide()
+        self.second_system_function_input.hide()
+        self.y_left_border_input.hide()
+        self.y_right_border_input.hide()
         self.remove_function_button.hide()
         self.second_function = None
         self.second_function_text = None
         self.is_solving_system = False
-        self.draw_graph()
 
-    def update_result_table(self, results):
-        """
-        Обновляет таблицу результатов, предварительно очищая её.
-        :param results: Список кортежей вида [("Метод", итерации, корень, f(корень)), ...]
-        """
+    def update_result_table_solo(self, results):
         self.result_table.clearContents()
         self.result_table.setRowCount(0)
         self.result_table.setRowCount(len(results))
@@ -341,7 +435,7 @@ class MainWindow(QWidget):
             if self.validate_all():
                 self.draw_graph()
                 if not self.is_solving_system:
-                    root_amount = root_counter(self.left_border, self.right_border, self.first_function)
+                    root_amount = root_counter(self.x_left_border, self.x_right_border, self.single_function)
                     if root_amount != 1:
                         self.result_table.clearContents()
                         self.result_table.setRowCount(0)
@@ -350,19 +444,26 @@ class MainWindow(QWidget):
                     else:
                         # self.update_result_table(self.calculate_one())
                         self.calculate_one()
+                else:
+                    self.calculate_system()
 
 
-
-        except (TypeError, AttributeError):
+        except (AttributeError, TypeError, NameError) as e:
             self.show_error("Ошибка", "Ошибка: Функция введена некорректно, обратитесь к подсказкам по вводу функций.")
 
     def calculate_one(self):
         results = []
-        results.append(("Метод половинного деления", half_division(self.left_border, self.right_border, self.accuracy, self.first_function)))
-        results.append(("Метод Ньютона", newton(self.left_border, self.right_border, self.accuracy, self.first_function)))
-        results.append(("Метод простой итерации", simple_iteration(self.left_border, self.right_border, self.accuracy, self.first_function)))
+        results.append(("Метод половинного деления", half_division(self.x_left_border, self.x_right_border, self.accuracy, self.single_function)))
+        results.append(("Метод Ньютона", newton(self.x_left_border, self.x_right_border, self.accuracy, self.single_function)))
+        results.append(("Метод простой итерации", simple_iteration(self.x_left_border, self.x_right_border, self.accuracy, self.single_function)))
         self.save_button.show()
-        self.update_result_table(results)
+        self.update_result_table_solo(results)
+        return results
+
+    def calculate_system(self):
+        results = []
+        self.save_button.show()
+        self.update_result_table_solo(results)
         return results
 
     def save_results(self):

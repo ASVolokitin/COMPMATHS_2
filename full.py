@@ -8,7 +8,7 @@ from PyQt6.QtGui import QDoubleValidator
 from PyQt6.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
-from calcs import parse_function, root_counter
+from calcs import parse_single_function, root_counter
 
 MAX_INTERVAL_LENGTH = 1000000
 
@@ -98,7 +98,7 @@ class MainWindow(QWidget):
             self.show_error("Ошибка", "Введите функцию")
             return
 
-        f = parse_function(function_text)
+        f = parse_single_function(function_text)
         if f is None:
             self.show_error("Ошибка", "Некорректная функция")
             return
