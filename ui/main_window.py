@@ -8,6 +8,8 @@ import pyqtgraph as pg
 from solvers.half_devision_solver import half_division
 from solvers.newton_solver import newton
 from solvers.simple_iteration_solver import simple_iteration
+from ui.widgets.graph_widget import GraphWidget
+from ui.widgets.result_table import ResultTable
 from util import parse_single_function, parse_multi_variable_function, root_counter, MAX_INTERVAL_LENGTH, \
     MIN_INTERVAL_LENGTH, SAMPLES_AMOUNT
 
@@ -114,13 +116,8 @@ class MainWindow(QWidget):
         self.hints_button.clicked.connect(self.show_hints)
 
         # Виджет для отображения графика (PyQtGraph)
-        self.graph_widget = pg.PlotWidget()
-        self.graph_widget.setBackground('w')  # Устанавливаем белый фон
+        self.graph_widget = GraphWidget()
         self.main_layout.addWidget(self.graph_widget)
-        self.graph_widget.getAxis('left').setPen(pg.mkPen(color='k'))  # Черный цвет для оси Y
-        self.graph_widget.getAxis('bottom').setPen(pg.mkPen(color='k'))  # Черный цвет для оси X
-        self.graph_widget.getAxis('left').setTextPen(pg.mkPen(color='k'))  # Черный цвет для текста оси Y
-        self.graph_widget.getAxis('bottom').setTextPen(pg.mkPen(color='k'))  # Черный цвет для текста оси X
 
         # Настраиваем сетку
         self.graph_widget.showGrid(x=True, y=True, alpha=0.5)
@@ -131,12 +128,8 @@ class MainWindow(QWidget):
         self.calc_button.clicked.connect(self.calculate)
         self.main_layout.addWidget(self.calc_button)
 
-        # Таблица для отображения результатов
-        self.result_table = QTableWidget(0, 4)
-        self.result_table.setHorizontalHeaderLabels(["Метод", "Количество итераций", "Найденный корень", "Значение функции"])
+        self.result_table = ResultTable()
         self.main_layout.addWidget(self.result_table)
-        self.result_table.resizeColumnsToContents()
-        self.result_table.horizontalHeader().setStretchLastSection(True)
 
         self.save_button = QPushButton("Сохранить результаты в файл", self)
         self.save_button.clicked.connect(self.save_results)
@@ -386,20 +379,20 @@ class MainWindow(QWidget):
         self.second_function_text = None
         self.is_solving_system = False
 
-    def update_result_table_solo(self, results):
-        self.result_table.clearContents()
-        self.result_table.setRowCount(0)
-        self.result_table.setRowCount(len(results))
-
-        print(results)
-        for row, (data) in enumerate(results):
-            print("data :", row, data)
-            self.result_table.setItem(row, 0, QTableWidgetItem(data[0]))
-            self.result_table.setItem(row, 1, QTableWidgetItem(str(data[1]["iter_amount"]) if data[1]["status_msg"] == "OK" else data[1]["status_msg"]))
-            self.result_table.setItem(row, 2, QTableWidgetItem("Не найден" if data[1]['root'] is None else f"{data[1]['root']:.15f}"))
-            self.result_table.setItem(row, 3, QTableWidgetItem("Метод не применим" if data[1]['value'] is None else f"{data[1]['value']:.15f}"))
-        self.result_table.resizeColumnsToContents()
-        self.result_table.horizontalHeader().setStretchLastSection(True)
+    # def update_result_table_solo(self, results):
+    #     self.result_table.clearContents()
+    #     self.result_table.setRowCount(0)
+    #     self.result_table.setRowCount(len(results))
+    #
+    #     print(results)
+    #     for row, (data) in enumerate(results):
+    #         print("data :", row, data)
+    #         self.result_table.setItem(row, 0, QTableWidgetItem(data[0]))
+    #         self.result_table.setItem(row, 1, QTableWidgetItem(str(data[1]["iter_amount"]) if data[1]["status_msg"] == "OK" else data[1]["status_msg"]))
+    #         self.result_table.setItem(row, 2, QTableWidgetItem("Не найден" if data[1]['root'] is None else f"{data[1]['root']:.15f}"))
+    #         self.result_table.setItem(row, 3, QTableWidgetItem("Метод не применим" if data[1]['value'] is None else f"{data[1]['value']:.15f}"))
+    #     self.result_table.resizeColumnsToContents()
+    #     self.result_table.horizontalHeader().setStretchLastSection(True)
 
     def calculate(self):
         # try:
@@ -428,13 +421,13 @@ class MainWindow(QWidget):
         results.append(("Метод Ньютона", newton(self.x_left_border, self.x_right_border, self.accuracy, self.single_function)))
         results.append(("Метод простой итерации", simple_iteration(self.x_left_border, self.x_right_border, self.accuracy, self.single_function)))
         self.save_button.show()
-        self.update_result_table_solo(results)
+        self.result_table.update_result_table_solo(results)
         return results
 
     def calculate_system(self):
         results = []
         self.save_button.show()
-        self.update_result_table_solo(results)
+        self.result_table.update_result_table_solo(results)
         return results
 
     def save_results(self):
