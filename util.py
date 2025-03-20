@@ -5,11 +5,13 @@ import sympy as sp
 import numpy as np
 import numdifftools as nd
 
+from entites.equation_system import System1, System2
+
 ABOUT_NULL = 1e-2
 MAX_INTERVAL_LENGTH = 1000000
 MIN_INTERVAL_LENGTH = 0.5
 SAMPLES_AMOUNT = 10000
-system_functions_options = {"Система 1": {"first_func": lambda x, y: x**2 - 2 * y, "second_func": lambda x, y: np.sin(x * y) - 3 * x}, "Система 2": {"first_func": lambda x, y: np.exp(x**3) - 4 * x * y + 2 * y**2, "second_func": lambda x, y: x**2 + y**2 - 3 * x * y - 7}}
+system_functions_options = [System1(), System2()]
 
 
 def derivative(f, x):

@@ -1,22 +1,27 @@
 import numpy as np
 import sympy as sp
-from PyQt6.QtWidgets import (QWidget, QLineEdit, QPushButton, QMessageBox, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem, QDialog, QTextEdit,
-                             QFileDialog)
+from PyQt6.QtWidgets import (QWidget, QLineEdit, QPushButton, QMessageBox, QVBoxLayout, QHBoxLayout, QTableWidget,
+                             QTableWidgetItem, QDialog, QTextEdit,
+                             QFileDialog, QComboBox)
 from PyQt6.QtGui import QDoubleValidator
 import pyqtgraph as pg
 
 from solvers.half_devision_solver import half_division
 from solvers.newton_solver import newton
 from solvers.simple_iteration_solver import simple_iteration
+from ui.widgets.function_selector import FunctionSelectionComboBox
 from ui.widgets.graph_widget import GraphWidget
 from ui.widgets.result_table import ResultTable
+from ui.widgets.system_combobox import SystemComboBox
 from util import parse_single_function, parse_multi_variable_function, root_counter, MAX_INTERVAL_LENGTH, \
-    MIN_INTERVAL_LENGTH, SAMPLES_AMOUNT
+    MIN_INTERVAL_LENGTH, SAMPLES_AMOUNT, system_functions_options
 
 
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
+        self.system_functions_options = system_functions_options
+        self.selected_value = None
         self.first_system_function_text = None
         self.first_system_function = None
         self.draw_graph_button = None
@@ -36,6 +41,7 @@ class MainWindow(QWidget):
         self.x_right_border = 1
         self.y_left_border = -1
         self.y_right_border = 1
+        self.x_input_layout = QHBoxLayout()
         self.accuracy = 0.05
         self.is_solving_system = False
         self.initializeUI()
@@ -45,6 +51,12 @@ class MainWindow(QWidget):
         self.setGeometry(100, 100, 500, 700)
 
         self.main_layout = QVBoxLayout()
+
+        self.selected_option = None
+        self.combo_box = SystemComboBox()
+        self.combo_box.currentTextChanged.connect(self.update_system_combobox)
+        self.main_layout.addWidget(self.combo_box)
+        self.combo_box.hide()
 
         # Поле для ввода функции
         self.single_function_input = QLineEdit(self)
@@ -80,11 +92,10 @@ class MainWindow(QWidget):
         self.y_left_border_input.setPlaceholderText(f"Левый предел для y ({self.y_left_border})")
         self.y_right_border_input.setPlaceholderText(f"Правый предел для y ({self.y_right_border})")
 
-        x_input_layout = QHBoxLayout()
-        x_input_layout.addWidget(self.x_left_border_input)
-        x_input_layout.addWidget(self.x_right_border_input)
-        x_input_layout.addWidget(self.accuracy_input)
-        self.main_layout.addLayout(x_input_layout)
+        self.x_input_layout.addWidget(self.x_left_border_input)
+        self.x_input_layout.addWidget(self.x_right_border_input)
+        self.x_input_layout.addWidget(self.accuracy_input)
+        self.main_layout.addLayout(self.x_input_layout)
 
         y_input_layout = QHBoxLayout()
         y_input_layout.addWidget(self.y_left_border_input)
@@ -98,6 +109,10 @@ class MainWindow(QWidget):
         self.draw_graph_button = QPushButton("Построить", self)
         self.draw_graph_button.clicked.connect(self.draw_graph)
         button_layout.addWidget(self.draw_graph_button)
+
+        # self.function_combo_box = FunctionSelectionComboBox(system_functions_options, self)
+        # self.function_combo_box.function_selected.connect(self.on_function_selected)
+        # self.main_layout.addWidget(self.function_combo_box)
 
         self.add_function_button = QPushButton("Добавить уравнение")
         self.add_function_button.clicked.connect(self.add_function)
@@ -137,6 +152,10 @@ class MainWindow(QWidget):
         self.save_button.hide()
 
         self.setLayout(self.main_layout)
+
+    def update_system_combobox(self, key):
+        self.selected_value = key
+        print(f"Вы выбрали: {self.selected_value}")
 
     def validate_single_fields(self):
         try:
@@ -359,40 +378,25 @@ class MainWindow(QWidget):
             self.show_error("Ошибка", "Неверный формат функции.")
     def add_function(self):
         self.single_function_input.hide()
-        self.first_system_function_input.show()
-        self.second_system_function_input.show()
+        self.add_function_button.hide()
+        self.combo_box.show()
         self.remove_function_button.show()
         self.y_left_border_input.show()
         self.y_right_border_input.show()
-        self.add_function_button.hide()
+        self.x_input_layout.removeWidget(self.accuracy_input)
+        self.main_layout.insertWidget(self.main_layout.indexOf(self.x_input_layout) + 2, self.accuracy_input)
         self.is_solving_system = True
 
     def remove_function(self):
-        self.add_function_button.show()
         self.single_function_input.show()
-        self.first_system_function_input.hide()
-        self.second_system_function_input.hide()
+        self.add_function_button.show()
+        self.combo_box.hide()
+        self.remove_function_button.hide()
         self.y_left_border_input.hide()
         self.y_right_border_input.hide()
-        self.remove_function_button.hide()
-        self.second_function = None
-        self.second_function_text = None
-        self.is_solving_system = False
-
-    # def update_result_table_solo(self, results):
-    #     self.result_table.clearContents()
-    #     self.result_table.setRowCount(0)
-    #     self.result_table.setRowCount(len(results))
-    #
-    #     print(results)
-    #     for row, (data) in enumerate(results):
-    #         print("data :", row, data)
-    #         self.result_table.setItem(row, 0, QTableWidgetItem(data[0]))
-    #         self.result_table.setItem(row, 1, QTableWidgetItem(str(data[1]["iter_amount"]) if data[1]["status_msg"] == "OK" else data[1]["status_msg"]))
-    #         self.result_table.setItem(row, 2, QTableWidgetItem("Не найден" if data[1]['root'] is None else f"{data[1]['root']:.15f}"))
-    #         self.result_table.setItem(row, 3, QTableWidgetItem("Метод не применим" if data[1]['value'] is None else f"{data[1]['value']:.15f}"))
-    #     self.result_table.resizeColumnsToContents()
-    #     self.result_table.horizontalHeader().setStretchLastSection(True)
+        self.main_layout.removeWidget(self.accuracy_input)
+        self.x_input_layout.insertWidget(self.x_input_layout.indexOf(self.x_right_border_input) + 1, self.accuracy_input)
+        self.is_solving_system = True
 
     def calculate(self):
         # try:
