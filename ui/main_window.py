@@ -1,45 +1,16 @@
-# Добавить адаптивный дизайн
-# Отладить вывод результатов и сохранение их в файл
-
-import sys
 import numpy as np
 import sympy as sp
-from PyQt6.QtWidgets import (QApplication, QWidget, QLineEdit, QPushButton, QLabel,
-                             QMessageBox, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem, QDialog, QTextEdit,
+from PyQt6.QtWidgets import (QWidget, QLineEdit, QPushButton, QMessageBox, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem, QDialog, QTextEdit,
                              QFileDialog)
-from PyQt6.QtGui import QDoubleValidator, QColor
+from PyQt6.QtGui import QDoubleValidator
 import pyqtgraph as pg
 
-from calcs import parse_single_function, root_counter, half_division, newton, simple_iteration, \
-    parse_multi_variable_function
+from solvers.half_devision_solver import half_division
+from solvers.newton_solver import newton
+from solvers.simple_iteration_solver import simple_iteration
+from util import parse_single_function, parse_multi_variable_function, root_counter, MAX_INTERVAL_LENGTH, \
+    MIN_INTERVAL_LENGTH, SAMPLES_AMOUNT
 
-MIN_INTERVAL_LENGTH = 0.5
-MAX_INTERVAL_LENGTH = 1000000
-SAMPLES_AMOUNT = 10000
-
-class HintWindow(QDialog):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Подсказки по вводу функции")
-        self.setGeometry(500, 100, 400, 300)
-
-        layout = QVBoxLayout()
-        self.setLayout(layout)
-        self.hint_text = QTextEdit(self)
-        self.hint_text.setReadOnly(True)  # Запрещаем редактирование
-        self.hint_text.setPlainText(
-            "Задавайте уравнения в виде функций f(x), таких что f(x) = 0.\n\n"
-            "Примеры ввода функций:\n\n"
-            "1. Полиномы: x**2 - 4*x + 4\n"
-            "2. Тригонометрические функции: sin(x) + cos(x)\n"
-            "3. Экспоненты: exp(x) - 2\n"
-            "4. Логарифмы: log(x) + 1\n"
-            "5. Комбинированные: x**2 + sin(x) - exp(x)\n\n"
-            "Допустимые операторы: +, -, *, /, ** (степень)\n"
-            "Допустимые функции: sin, cos, tan, exp, log, sqrt и др.\n"
-            "Используйте 'x' как переменную."
-        )
-        layout.addWidget(self.hint_text)
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -431,7 +402,7 @@ class MainWindow(QWidget):
         self.result_table.horizontalHeader().setStretchLastSection(True)
 
     def calculate(self):
-        try:
+        # try:
             if self.validate_all():
                 self.draw_graph()
                 if not self.is_solving_system:
@@ -448,8 +419,8 @@ class MainWindow(QWidget):
                     self.calculate_system()
 
 
-        except (AttributeError, TypeError, NameError) as e:
-            self.show_error("Ошибка", "Ошибка: Функция введена некорректно, обратитесь к подсказкам по вводу функций.")
+        # except (AttributeError, TypeError, NameError) as e:
+        #     self.show_error("Ошибка", "Ошибка: Функция введена некорректно, обратитесь к подсказкам по вводу функций.")
 
     def calculate_one(self):
         results = []
@@ -506,8 +477,3 @@ class MainWindow(QWidget):
     def show_hints(self):
         self.hint_window = HintWindow()
         self.hint_window.exec()
-
-app = QApplication(sys.argv)
-window = MainWindow()
-window.show()
-sys.exit(app.exec())

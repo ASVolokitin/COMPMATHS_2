@@ -1,7 +1,7 @@
 import math
 import numpy as np
 
-from main import derivative
+from archive import derivative
 
 
 def chord_method(f, a, b, tol=1e-2, max_iter=100):
