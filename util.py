@@ -10,7 +10,7 @@ from entites.equation_system import System1, System2
 ABOUT_NULL = 1e-2
 MAX_INTERVAL_LENGTH = 1000000
 MIN_INTERVAL_LENGTH = 0.5
-SAMPLES_AMOUNT = 10000
+SAMPLES_AMOUNT = 1000
 system_functions_options = [System1(), System2()]
 
 
