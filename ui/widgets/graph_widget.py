@@ -30,7 +30,7 @@
 #             print(f"Ошибка при построении контурного графика: {e}")
 #
 #     def draw_graph(self, is_solving_system, single_function, single_function_text, selected_value, x_left_border,
-#                    x_right_border, y_left_border=None, y_right_border=None):
+#                    x_right_border, y_bottom_border=None, y_top_border=None):
 #         self.clear()
 #         SAMPLES_AMOUNT = 100
 #
@@ -52,7 +52,7 @@
 #         else:
 #             try:
 #                 x_vals = np.linspace(x_left_border, x_right_border, SAMPLES_AMOUNT)
-#                 y_vals = np.linspace(y_left_border, y_right_border, SAMPLES_AMOUNT)
+#                 y_vals = np.linspace(y_bottom_border, y_top_border, SAMPLES_AMOUNT)
 #                 X, Y = np.meshgrid(x_vals, y_vals)
 #
 #                 Z1 = selected_value.first_func(X, Y)
@@ -103,21 +103,22 @@ class GraphWidget(QWidget):
         self.ax.grid(True)  # Добавляем сетку
         self.canvas.draw()
 
-    def plot_implicit_functions(self, g, h, x_range, y_range):
-        """Отображает графики двух функций g(x, y) = 0 и h(x, y) = 0."""
+    def plot_implicit_functions(self, first_func, second_func, x_range, y_range, start_point):
+        """Отображает графики двух функций first_func(x, y) = 0 и second_func(x, y) = 0."""
         self.ax.clear()
         x = np.linspace(x_range[0], x_range[1], SAMPLES_AMOUNT)
         y = np.linspace(y_range[0], y_range[1], SAMPLES_AMOUNT)
         X, Y = np.meshgrid(x, y)
-        G = g(X, Y)
-        H = h(X, Y)
-        print(f"Тип g: {type(g)}, Тип h: {type(h)}")
-        # self.ax.contour(X, Y, G, levels=[0], colors='r', label='g(x, y) = 0')
+        G = first_func(X, Y)
+        H = second_func(X, Y)
+        # self.ax.contour(X, Y, G, levels=[0], colors='r', label='first_func(x, y) = 0')
         self.ax.contour(X, Y, G, levels=[0], colors='r')
-        # self.ax.contour(X, Y, H, levels=[0], colors='b', label='h(x, y) = 0')
+        # self.ax.contour(X, Y, H, levels=[0], colors='b', label='second_func(x, y) = 0')
         self.ax.contour(X, Y, H, levels=[0], colors='b')
         self.ax.axhline(0, color='black', linewidth=1)
         self.ax.axvline(0, color='black', linewidth=1)
+        self.ax.scatter(start_point[0], start_point[1], color='green', s=50)
+        # self.ax.set_title(f"Графики уравнений {first_func}")
         # self.ax.legend()
         self.ax.grid(True)  # Добавляем сетку
         self.canvas.draw()

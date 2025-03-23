@@ -38,10 +38,10 @@ def chord_method(f, a, b, tol=1e-2, max_iter=100):
 def simple_iteration_method(g, x0, tol=1e-2, max_iter=100):
     # fun = lambda x: -2.7 * x ** 3 - 1.48 * x ** 2 + 19.23 * x + 6.35
     """
-    Находит корень уравнения x = g(x) методом простой итерации.
+    Находит корень уравнения x = first_func(x) методом простой итерации.
 
     Параметры:
-    g: функция, задающая итерационный процесс.
+    first_func: функция, задающая итерационный процесс.
     x0: начальное приближение.
     tol: допустимая погрешность (точность).
     max_iter: максимальное количество итераций.
@@ -75,12 +75,12 @@ def g(x):
 x0 = -2.5
 
 # Находим корень
-# root = simple_iteration_method(g, x0)
+# root = simple_iteration_method(first_func, x0)
 # print(f"Найденный корень: {root:.6f}")
 
 fun = lambda x : -2.7 * x**3 - 1.48 * x**2 + 19.23 * x + 6.35
-# print(derivative(g, -3))
-# print(derivative(g, -2))
+# print(derivative(first_func, -3))
+# print(derivative(first_func, -2))
 
 # chord_method(fun, 2, 3)
 

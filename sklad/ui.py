@@ -8,7 +8,7 @@ import pyqtgraph as pg
 from solvers.half_devision_solver import half_division
 from solvers.newton_solver import newton
 from solvers.simple_iteration_solver import simple_iteration
-from util import parse_single_function, parse_multi_variable_function, root_counter, MAX_INTERVAL_LENGTH, \
+from utils import parse_single_function, parse_multi_variable_function, root_counter, MAX_INTERVAL_LENGTH, \
     MIN_INTERVAL_LENGTH, SAMPLES_AMOUNT
 
 
@@ -44,8 +44,8 @@ from util import parse_single_function, parse_multi_variable_function, root_coun
 #         self.draw_graph_button = None
 #         self.x_left_border_input = None
 #         self.x_right_border_input = None
-#         self.y_left_border_input = None
-#         self.y_right_border_input = None
+#         self.y_bottom_border_input = None
+#         self.y_top_border_input = None
 #         self.first_system_function_input = None
 #         self.second_system_function_input = None
 #         self.second_system_function_text = None
@@ -56,8 +56,8 @@ from util import parse_single_function, parse_multi_variable_function, root_coun
 #         self.second_function = None
 #         self.x_left_border = -1
 #         self.x_right_border = 1
-#         self.y_left_border = -1
-#         self.y_right_border = 1
+#         self.y_bottom_border = -1
+#         self.y_top_border = 1
 #         self.accuracy = 0.05
 #         self.is_solving_system = False
 #         self.initializeUI()
@@ -86,21 +86,21 @@ from util import parse_single_function, parse_multi_variable_function, root_coun
 #         self.x_left_border_input = QLineEdit(self)
 #         self.x_right_border_input = QLineEdit(self)
 #         self.accuracy_input = QLineEdit(self)
-#         self.y_left_border_input = QLineEdit(self)
-#         self.y_right_border_input = QLineEdit(self)
+#         self.y_bottom_border_input = QLineEdit(self)
+#         self.y_top_border_input = QLineEdit(self)
 #
 #         validator = QDoubleValidator()
 #         self.x_left_border_input.setValidator(validator)
 #         self.x_right_border_input.setValidator(validator)
 #         self.accuracy_input.setValidator(validator)
-#         self.y_left_border_input.setValidator(validator)
-#         self.y_right_border_input.setValidator(validator)
+#         self.y_bottom_border_input.setValidator(validator)
+#         self.y_top_border_input.setValidator(validator)
 #
 #         self.x_left_border_input.setPlaceholderText(f"Левый предел ({self.x_left_border})")
 #         self.x_right_border_input.setPlaceholderText(f"Правый предел ({self.x_right_border})")
 #         self.accuracy_input.setPlaceholderText(f"Точность ({self.accuracy})")
-#         self.y_left_border_input.setPlaceholderText(f"Левый предел для y ({self.y_left_border})")
-#         self.y_right_border_input.setPlaceholderText(f"Правый предел для y ({self.y_right_border})")
+#         self.y_bottom_border_input.setPlaceholderText(f"Левый предел для y ({self.y_bottom_border})")
+#         self.y_top_border_input.setPlaceholderText(f"Правый предел для y ({self.y_top_border})")
 #
 #         x_input_layout = QHBoxLayout()
 #         x_input_layout.addWidget(self.x_left_border_input)
@@ -109,8 +109,8 @@ from util import parse_single_function, parse_multi_variable_function, root_coun
 #         self.main_layout.addLayout(x_input_layout)
 #
 #         y_input_layout = QHBoxLayout()
-#         y_input_layout.addWidget(self.y_left_border_input)
-#         y_input_layout.addWidget(self.y_right_border_input)
+#         y_input_layout.addWidget(self.y_bottom_border_input)
+#         y_input_layout.addWidget(self.y_top_border_input)
 #         self.main_layout.addLayout(y_input_layout)
 #
 #         button_layout = QHBoxLayout()
@@ -121,17 +121,17 @@ from util import parse_single_function, parse_multi_variable_function, root_coun
 #         self.draw_graph_button.clicked.connect(self.draw_graph)
 #         button_layout.addWidget(self.draw_graph_button)
 #
-#         self.add_function_button = QPushButton("Добавить уравнение")
-#         self.add_function_button.clicked.connect(self.add_function)
-#         button_layout.addWidget(self.add_function_button)
+#         self.solve_system_button = QPushButton("Добавить уравнение")
+#         self.solve_system_button.clicked.connect(self.add_function)
+#         button_layout.addWidget(self.solve_system_button)
 #
-#         self.remove_function_button = QPushButton("Удалить второе уравнение")
-#         self.remove_function_button.clicked.connect(self.remove_function)
-#         button_layout.addWidget(self.remove_function_button)
+#         self.solve_equation_button = QPushButton("Удалить второе уравнение")
+#         self.solve_equation_button.clicked.connect(self.remove_function)
+#         button_layout.addWidget(self.solve_equation_button)
 #
-#         self.y_left_border_input.hide()
-#         self.y_right_border_input.hide()
-#         self.remove_function_button.hide()
+#         self.y_bottom_border_input.hide()
+#         self.y_top_border_input.hide()
+#         self.solve_equation_button.hide()
 #
 #         self.hints_button = QPushButton("Подсказки по вводу", self)
 #         button_layout.addWidget(self.hints_button)
@@ -392,20 +392,20 @@ from util import parse_single_function, parse_multi_variable_function, root_coun
 #         self.single_function_input.hide()
 #         self.first_system_function_input.show()
 #         self.second_system_function_input.show()
-#         self.remove_function_button.show()
-#         self.y_left_border_input.show()
-#         self.y_right_border_input.show()
-#         self.add_function_button.hide()
+#         self.solve_equation_button.show()
+#         self.y_bottom_border_input.show()
+#         self.y_top_border_input.show()
+#         self.solve_system_button.hide()
 #         self.is_solving_system = True
 #
 #     def remove_function(self):
-#         self.add_function_button.show()
+#         self.solve_system_button.show()
 #         self.single_function_input.show()
 #         self.first_system_function_input.hide()
 #         self.second_system_function_input.hide()
-#         self.y_left_border_input.hide()
-#         self.y_right_border_input.hide()
-#         self.remove_function_button.hide()
+#         self.y_bottom_border_input.hide()
+#         self.y_top_border_input.hide()
+#         self.solve_equation_button.hide()
 #         self.second_function = None
 #         self.second_function_text = None
 #         self.is_solving_system = False

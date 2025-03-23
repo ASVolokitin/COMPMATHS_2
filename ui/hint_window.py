@@ -12,7 +12,7 @@ class HintWindow(QDialog):
         self.hint_text = QTextEdit(self)
         self.hint_text.setReadOnly(True)  # Запрещаем редактирование
         self.hint_text.setPlainText(
-            "Задавайте уравнения в виде функций f(x), таких что f(x) = 0.\n\n"
+            "Задавайте уравнение в виде функции f(x), такой что f(x) = 0.\n\n"
             "Примеры ввода функций:\n\n"
             "1. Полиномы: x**2 - 4*x + 4\n"
             "2. Тригонометрические функции: sin(x) + cos(x)\n"

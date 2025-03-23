@@ -5,20 +5,29 @@ import sympy as sp
 import numpy as np
 import numdifftools as nd
 
-from entites.equation_system import System1, System2
+from entites.equation_system import System1, System2, System3
 
 ABOUT_NULL = 1e-2
 MAX_INTERVAL_LENGTH = 1000000
 MIN_INTERVAL_LENGTH = 0.5
 SAMPLES_AMOUNT = 1000
-system_functions_options = [System1(), System2()]
+MAX_ITERATIONS = 100000
 
+system_functions_options = [System1(), System2(), System3()]
 
 def derivative(f, x):
     return nd.Derivative(f)(x)
 
 def second_derivative(f, x):
     return nd.Derivative(nd.Derivative(f))(x)
+
+def df(func, x):
+    dx = 0.0001
+    return (func(x + dx) - func(x - dx)) / (2 * dx)
+
+def dff(func, x):
+    dx = 0.0001
+    return (func(x + dx) - 2 * func(x) + func(x - dx)) / dx ** 2
 
 def result_dict(root, value, iter_amout, status_msg):
     if root is None or value is None:
@@ -85,6 +94,15 @@ def check_sign_consistency(func, a, b, num_points=100):
             return False
     return True
 
+def is_changing_sign(func, a, b):
+    x_vals = np.linspace(a, b, SAMPLES_AMOUNT)
+    s = func(x_vals[0])
+    for x in x_vals[1:]:
+        new_s = func(x)
+        if new_s * s < 0: return True
+        s = new_s
+    return False
+
 def find_derivative_max(a, b, func, samples_amount=100):
     x = a
     abs_max_value = abs(derivative(func, x))
@@ -94,20 +112,24 @@ def find_derivative_max(a, b, func, samples_amount=100):
         x += abs(b - a) / samples_amount
     return abs_max_value
 
-# def deriv_half_division(a, b, e, func):
-#     n = 0
-#     x = (a + b) / 2
-#     while abs(b - a) >= e:
-#         fx = derivative(func, x)
-#         if abs(fx) < e: return x
+def partial_derivative(f_lambda, variables, diff_var, point):
+    f_sympy = f_lambda(*variables)
+    df_dvar = sp.diff(f_sympy, diff_var)
+    df_dvar_lambda = sp.lambdify(variables, df_dvar, 'numpy')
+    return df_dvar_lambda(*point)
+
+# # Определяем переменные
+# x, y = sp.symbols('x y')
 #
-#         if derivative(func, a) * fx < 0: b = x
-#         else: a = x
-#         x = (a + b) / 2
-#         n += 1
-#     print(x, derivative(func, x), n)
-#     return derivative(func, x)
+# # Пример лямбда-функции
+# f_lambda = lambda x, y: x ** 2 + 3 * x * y + y ** 2
 #
-#
-# def system_simple_iteration(func_1, func_2, max_iterations = 1000):
-#     phi_1 = simple_iteration(func_1)
+# # Вычисляем ∂f/∂x в точке (1, 2)
+# result = partial_derivative(f_lambda, (x, y), x, (1, 2))
+# print("∂f/∂x в точке (1,2):", result)
+
+
+def load_stylesheet(filename):
+    """Загружает стили из CSS-файла."""
+    with open(filename, "r", encoding="utf-8") as file:
+        return file.read()

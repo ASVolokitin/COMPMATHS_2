@@ -1,14 +1,19 @@
+import math
+
 import numpy as np
 import sympy as sp
 from PyQt6.QtWidgets import (QWidget, QLineEdit, QPushButton, QMessageBox, QVBoxLayout, QHBoxLayout, QTableWidget,
                              QTableWidgetItem, QDialog, QTextEdit,
-                             QFileDialog, QComboBox)
-from PyQt6.QtGui import QDoubleValidator
+                             QFileDialog, QComboBox, QGraphicsDropShadowEffect)
+from PyQt6.QtGui import QDoubleValidator, QColor
 import pyqtgraph as pg
 
+from entites.json_parser import json_parser
 from solvers.half_devision_solver import half_division
+from solvers.new_newton_solver import new_newton
 from solvers.newton_solver import newton
 from solvers.simple_iteration_solver import simple_iteration
+from solvers.system_simple_iteration_solver import system_simple_iteration_solver
 from ui.hint_window import HintWindow
 from ui.widgets.function_selector import FunctionSelectionComboBox
 from ui.widgets.graph_widget import GraphWidget
@@ -25,22 +30,32 @@ class MainWindow(QWidget):
         self.selected_value = system_functions_options[0]
         self.first_system_function_text = None
         self.first_system_function = None
-        self.draw_graph_button = None
+        self.second_system_function = None
+        self.single_function_input = QLineEdit(self)
         self.x_left_border_input = QLineEdit(self)
         self.x_right_border_input = QLineEdit(self)
-        self.y_left_border_input = QLineEdit(self)
-        self.y_right_border_input = QLineEdit(self)
+        self.x_start_input = QLineEdit(self)
+        self.y_bottom_border_input = QLineEdit(self)
+        self.y_top_border_input = QLineEdit(self)
+        self.y_start_input = QLineEdit(self)
         self.accuracy_input = QLineEdit(self)
-        self.first_system_function_input = None
-        self.second_system_function_input = None
-        self.second_system_function_text = None
-        self.second_system_function = None
+        self.x_start = None
+        self.y_start = None
+        self.draw_graph_button = QPushButton("Построить")
+        self.solve_system_button = QPushButton("Решить систему")
+        self.solve_equation_button = QPushButton("Решить уравнение")
+        self.hints_button = QPushButton("Подсказки по вводу", self)
+        self.load_file_button = QPushButton("Загрузить из файла")
+        # self.first_system_function_input = None
+        # self.second_system_function_input = None
+        # self.second_system_function_text = None
+        # self.second_system_function = None
         self.single_function_text = None
         self.single_function = None
         self.x_left_border = -1
         self.x_right_border = 1
-        self.y_left_border = -1
-        self.y_right_border = 1
+        self.y_bottom_border = -1
+        self.y_top_border = 1
         self.x_input_layout = QHBoxLayout()
         self.y_input_layout = QHBoxLayout()
         self.accuracy = 0.05
@@ -49,7 +64,7 @@ class MainWindow(QWidget):
 
     def initializeUI(self):
         self.setWindowTitle("Поиск корней функции")
-        self.setGeometry(100, 100, 500, 700)
+        self.setGeometry(0, 0, 600, 800)
 
         self.main_layout = QVBoxLayout()
 
@@ -59,80 +74,82 @@ class MainWindow(QWidget):
         self.combo_box.hide()
 
         # Поле для ввода функции
-        self.single_function_input = QLineEdit(self)
+
         self.single_function_input.setPlaceholderText("Введите функцию, например: x**3 - 4*x + 1")
         self.main_layout.addWidget(self.single_function_input)
 
-        self.first_system_function_input = QLineEdit(self)
-        self.first_system_function_input.setPlaceholderText("Введите функцию, например: x**3 - 4*y + 1")
-        self.main_layout.addWidget(self.first_system_function_input)
-        self.first_system_function_input.hide()
+        # self.first_system_function_input = QLineEdit(self)
+        # self.first_system_function_input.setPlaceholderText("Введите функцию, например: x**3 - 4*y + 1")
+        # self.main_layout.addWidget(self.first_system_function_input)
+        # self.first_system_function_input.hide()
 
-        self.second_system_function_input = QLineEdit(self)
-        self.second_system_function_input.setPlaceholderText("Введите функцию, например: sin(x) - y**2")
-        self.main_layout.addWidget(self.second_system_function_input)
-        self.second_system_function_input.hide()
+        # self.second_system_function_input = QLineEdit(self)
+        # self.second_system_function_input.setPlaceholderText("Введите функцию, например: sin(x) - y**2")
+        # self.main_layout.addWidget(self.second_system_function_input)
+        # self.second_system_function_input.hide()
 
         # self.x_left_border_input = QLineEdit(self)
         # self.x_right_border_input = QLineEdit(self)
-        # self.y_left_border_input = QLineEdit(self)
-        # self.y_right_border_input = QLineEdit(self)
+        # self.y_bottom_border_input = QLineEdit(self)
+        # self.y_top_border_input = QLineEdit(self)
 
         validator = QDoubleValidator()
         self.x_left_border_input.setValidator(validator)
         self.x_right_border_input.setValidator(validator)
-        self.y_left_border_input.setValidator(validator)
-        self.y_right_border_input.setValidator(validator)
+        self.x_start_input.setValidator(validator)
+        self.y_bottom_border_input.setValidator(validator)
+        self.y_top_border_input.setValidator(validator)
+        self.y_start_input.setValidator(validator)
         self.accuracy_input.setValidator(validator)
 
-        self.x_left_border_input.setPlaceholderText(f"Левый предел ({self.x_left_border})")
-        self.x_right_border_input.setPlaceholderText(f"Правый предел ({self.x_right_border})")
-        self.accuracy_input.setPlaceholderText(f"Точность ({self.accuracy})")
-        self.y_left_border_input.setPlaceholderText(f"Левый предел для y ({self.y_left_border})")
-        self.y_right_border_input.setPlaceholderText(f"Правый предел для y ({self.y_right_border})")
+        self.x_left_border_input.setPlaceholderText(f"Левый предел по X")
+        self.x_right_border_input.setPlaceholderText(f"Правый предел по X")
+        self.x_start_input.setPlaceholderText("Начальное приближение по X")
+        self.accuracy_input.setPlaceholderText(f"Точность (default = {self.accuracy})")
+        self.y_bottom_border_input.setPlaceholderText(f"Нижний предел по Y")
+        self.y_top_border_input.setPlaceholderText(f"Верхний предел по Y")
+        self.y_start_input.setPlaceholderText("Начальное приближение по Y")
 
         self.x_input_layout.addWidget(self.x_left_border_input)
         self.x_input_layout.addWidget(self.x_right_border_input)
+        self.x_input_layout.addWidget(self.x_start_input)
         self.x_input_layout.addWidget(self.accuracy_input)
         self.main_layout.addLayout(self.x_input_layout)
 
-        self.y_input_layout.addWidget(self.y_left_border_input)
-        self.y_input_layout.addWidget(self.y_right_border_input)
+        self.y_input_layout.addWidget(self.y_bottom_border_input)
+        self.y_input_layout.addWidget(self.y_top_border_input)
+        self.y_input_layout.addWidget(self.y_start_input)
         self.main_layout.addLayout(self.y_input_layout)
+
+        self.x_start_input.hide()
+        self.y_start_input.hide()
 
         button_layout = QHBoxLayout()
         self.main_layout.addLayout(button_layout)
 
-        # Кнопка для построения графика
-        self.draw_graph_button = QPushButton("Построить", self)
         self.draw_graph_button.clicked.connect(self.draw_graph)
         button_layout.addWidget(self.draw_graph_button)
 
-        self.add_function_button = QPushButton("Добавить уравнение")
-        self.add_function_button.clicked.connect(self.add_function)
-        button_layout.addWidget(self.add_function_button)
+        self.solve_equation_button.clicked.connect(self.remove_function)
+        button_layout.addWidget(self.solve_equation_button)
 
-        self.remove_function_button = QPushButton("Удалить второе уравнение")
-        self.remove_function_button.clicked.connect(self.remove_function)
-        button_layout.addWidget(self.remove_function_button)
+        self.solve_system_button.clicked.connect(self.add_function)
+        button_layout.addWidget(self.solve_system_button)
 
-        self.y_left_border_input.hide()
-        self.y_right_border_input.hide()
-        self.remove_function_button.hide()
+        self.y_bottom_border_input.hide()
+        self.y_top_border_input.hide()
+        self.solve_equation_button.hide()
 
-        self.hints_button = QPushButton("Подсказки по вводу", self)
         button_layout.addWidget(self.hints_button)
         self.hints_button.clicked.connect(self.show_hints)
+
+        button_layout.addWidget(self.load_file_button)
+        self.load_file_button.clicked.connect(self.load_file)
 
         # Виджет для отображения графика (PyQtGraph)
         self.graph_widget = GraphWidget()
         self.main_layout.addWidget(self.graph_widget)
 
-        # Настраиваем сетку
-        # self.graph_widget.showGrid(x=True, y=True, alpha=0.5)
-        # self.graph_widget.getViewBox().setBackgroundColor('w')  # Белый фон внутри графика
-
-        # Кнопка для вычисления корней
         self.calc_button = QPushButton("Вычислить", self)
         self.calc_button.clicked.connect(self.calculate)
         self.main_layout.addWidget(self.calc_button)
@@ -166,20 +183,20 @@ class MainWindow(QWidget):
             self.show_error("Ошибка точности", "Точность должна быть задана положительным числом")
 
     def validate_x_borders(self):
-        if self.validate_borders(self.x_left_border_input, self.x_right_border_input):
+        if self.validate_border(self.x_left_border_input, self.x_right_border_input):
             self.x_left_border = float(self.x_left_border_input.text().replace(",", "."))
             self.x_right_border = float(self.x_right_border_input.text().replace(",", "."))
             return True
         return False
 
     def validate_y_borders(self):
-        if self.validate_borders(self.y_left_border_input, self.y_right_border_input):
-            self.y_left_border = float(self.y_left_border_input.text().replace(",", "."))
-            self.y_right_border = float(self.y_right_border_input.text().replace(",", "."))
+        if self.validate_border(self.y_bottom_border_input, self.y_top_border_input):
+            self.y_bottom_border = float(self.y_bottom_border_input.text().replace(",", "."))
+            self.y_top_border = float(self.y_top_border_input.text().replace(",", "."))
             return True
         return False
 
-    def validate_borders(self, left_border_field, right_border_field):
+    def validate_border(self, left_border_field, right_border_field):
         try:
             if left_border_field == "" or right_border_field == "":
                 raise ValueError
@@ -203,6 +220,24 @@ class MainWindow(QWidget):
             self.show_error("Ошибка диапазона", "Балду какую-то вводишь братик")
             return False
 
+    def validate_start_point(self):
+        try:
+            x_start = float(self.x_start_input.text().replace(",", "."))
+            y_start = float(self.y_start_input.text().replace(",", "."))
+            if not self.x_left_border <= x_start <= self.x_right_border:
+                self.show_error("Ошибка выбора начального приближения", f"Начальное приближение по X должно быть между {self.x_left_border} и {self.x_right_border}.")
+                return False
+            if not self.y_bottom_border <= y_start <= self.y_top_border:
+                self.show_error("Ошибка выбора начального приближения", f"Начальное приближение по X должно быть между {self.x_left_border} и {self.x_right_border}.")
+                return False
+
+            self.x_start = x_start
+            self.y_start = y_start
+            return True
+        except ValueError:
+            self.show_error("Ошибка начального приближения", "Начальное приближение необходимо задавать числами.")
+            return False
+
     def try_to_assign_single_function(self):
         function_text = self.single_function_input.text().strip().replace(",", ".")
         if "=" in function_text:
@@ -212,64 +247,131 @@ class MainWindow(QWidget):
             self.show_error("Ошибка", "Введите функцию")
             return False
         try:
-            self.single_function = sp.lambdify(sp.symbols('x'), parse_single_function(function_text, 'x'), 'numpy')
+
+            expr = sp.sympify(function_text)
+            variables = expr.free_symbols
+            if not variables.issubset({sp.Symbol('x')}):
+                self.show_error("Ошибка", "Функция должна содержать только переменную x.")
+                return False
+
+            self.single_function = sp.lambdify(sp.symbols('x'), expr, 'numpy')
             self.single_function_text = function_text
+            try:
+                self.single_function(math.pi)
+            except ZeroDivisionError:
+                pass
             if self.single_function is None:
                 self.show_error("Ошибка", "Не удалось распознать функцию, обратитесь к подсказкам по вводу.")
                 return False
             return True
-        except Exception as e:
-            self.show_error("Ошибка", "Ошибка: Функция введена некорректно, обратитесь к подсказкам по вводу функций.")
+        except (sp.SympifyError, NameError, AttributeError) as e:
+            self.show_error("Ошибка", "Ошибка: Синтаксис функции не соответствует формату, обратитесь к подсказкам по вводу.")
             return False
 
-    def validate_all(self):
+    def validate_borders(self):
         if self.validate_x_borders() and self.validate_accuracy():
             print(f"Установлена левая граница X: {self.x_left_border}")
             print(f"Установлена правая граница X: {self.x_right_border}")
             print(f"Установлена точность: {self.accuracy}")
-            if not self.is_solving_system:
-                return self.try_to_assign_single_function()
-            else:
+
+            if self.is_solving_system:
                 if self.validate_y_borders():
-                    print(f"Установлена левая граница Y: {self.y_left_border}")
-                    print(f"Установлена правая граница Y: {self.y_right_border}")
-                    self.first_system_function = self.selected_value.first_func
-                    self.second_system_function = self.selected_value.second_func
-                    print("Значение: ", self.second_system_function(3, 3))
+                    print(f"Установлена левая граница Y: {self.y_bottom_border}")
+                    print(f"Установлена правая граница Y: {self.y_top_border}")
                     return True
                 else:
                     return False
+            return True
         else:
             return False
 
-    def draw_graph(self):
-        if self.validate_all():
-            if not self.is_solving_system:
-                self.graph_widget.plot_function(self.single_function, [self.x_left_border, self.x_right_border])
+    def validate_all(self):
+        if self.validate_borders():
+            if self.is_solving_system:
+                self.first_system_function = self.selected_value.first_func
+                self.second_system_function = self.selected_value.second_func
+                return self.validate_start_point()
             else:
-                self.graph_widget.plot_implicit_functions(self.first_system_function, self.second_system_function, [self.x_left_border, self.x_right_border], [self.y_left_border, self.y_right_border])
+                return self.try_to_assign_single_function()
+        else:
+            return False
+
+    def validate_graph(self):
+        if self.validate_borders():
+            if self.is_solving_system:
+                self.first_system_function = self.selected_value.first_func
+                self.second_system_function = self.selected_value.second_func
+                return True
+            else:
+                return self.try_to_assign_single_function()
+        else:
+            return False
+
+    # def validate_all(self):
+    #     if self.validate_x_borders() and self.validate_accuracy():
+    #         print(f"Установлена левая граница X: {self.x_left_border}")
+    #         print(f"Установлена правая граница X: {self.x_right_border}")
+    #         print(f"Установлена точность: {self.accuracy}")
+    #         if not self.is_solving_system:
+    #             return self.try_to_assign_single_function()
+    #         else:
+    #             if self.validate_y_borders():
+    #                 print(f"Установлена левая граница Y: {self.y_bottom_border}")
+    #                 print(f"Установлена правая граница Y: {self.y_top_border}")
+    #                 self.first_system_function = self.selected_value.first_func
+    #                 self.second_system_function = self.selected_value.second_func
+    #                 return self.validate_start_point()
+    #             else:
+    #                 return False
+    #     else:
+    #         return False
+
+    # def draw_graph(self):
+    #     if self.validate_all():
+    #         if not self.is_solving_system:
+    #             self.graph_widget.plot_function(self.single_function, [self.x_left_border, self.x_right_border])
+    #         else:
+    #             self.graph_widget.plot_implicit_functions(self.first_system_function, self.second_system_function, [self.x_left_border, self.x_right_border], [self.y_bottom_border, self.y_top_border], [self.x_start, self.y_start])
+
+    def draw_graph(self):
+        if self.validate_graph():
+            if self.is_solving_system:
+                self.graph_widget.plot_implicit_functions(self.first_system_function, self.second_system_function,
+                                                          [self.x_left_border, self.x_right_border],
+                                                          [self.y_bottom_border, self.y_top_border],
+                                                          [self.x_start, self.y_start])
+            else:
+                self.graph_widget.plot_function(self.single_function, [self.x_left_border, self.x_right_border])
 
     def add_function(self):
         self.single_function_input.hide()
-        self.add_function_button.hide()
+        self.solve_system_button.hide()
+        self.hints_button.hide()
         self.combo_box.show()
-        self.remove_function_button.show()
-        self.y_left_border_input.show()
-        self.y_right_border_input.show()
+        self.solve_equation_button.show()
+        self.y_bottom_border_input.show()
+        self.y_top_border_input.show()
+        self.x_start_input.show()
+        self.y_start_input.show()
         self.x_input_layout.removeWidget(self.accuracy_input)
         self.main_layout.insertWidget(self.main_layout.indexOf(self.y_input_layout) + 1, self.accuracy_input)
         self.is_solving_system = True
+        self.result_table.clear_table()
 
     def remove_function(self):
         self.single_function_input.show()
-        self.add_function_button.show()
+        self.solve_system_button.show()
+        self.hints_button.show()
         self.combo_box.hide()
-        self.remove_function_button.hide()
-        self.y_left_border_input.hide()
-        self.y_right_border_input.hide()
+        self.solve_equation_button.hide()
+        self.y_bottom_border_input.hide()
+        self.y_top_border_input.hide()
+        self.x_start_input.hide()
+        self.y_start_input.hide()
         self.main_layout.removeWidget(self.accuracy_input)
         self.x_input_layout.insertWidget(self.x_input_layout.indexOf(self.x_right_border_input) + 1, self.accuracy_input)
         self.is_solving_system = False
+        self.result_table.clear_table()
 
     def calculate(self):
         # try:
@@ -294,6 +396,7 @@ class MainWindow(QWidget):
     def calculate_one(self):
         results = []
         results.append(("Метод половинного деления", half_division(self.x_left_border, self.x_right_border, self.accuracy, self.single_function)))
+        # results.append(("Метод Ньютона", new_newton(self.x_left_border, self.x_right_border, self.accuracy, self.single_function)))
         results.append(("Метод Ньютона", newton(self.x_left_border, self.x_right_border, self.accuracy, self.single_function)))
         results.append(("Метод простой итерации", simple_iteration(self.x_left_border, self.x_right_border, self.accuracy, self.single_function)))
         self.save_button.show()
@@ -302,8 +405,10 @@ class MainWindow(QWidget):
 
     def calculate_system(self):
         results = []
+        results.append(("Метод простой итерации", system_simple_iteration_solver(self.x_left_border, self.x_right_border, self.y_bottom_border, self.y_top_border, self.x_start, self.y_start, self.accuracy, self.selected_value)))
+        print(results)
         self.save_button.show()
-        self.result_table.update_result_table_solo(results)
+        self.result_table.update_result_table_system(results)
         return results
 
     def save_results(self):
@@ -346,3 +451,30 @@ class MainWindow(QWidget):
     def show_hints(self):
         self.hint_window = HintWindow()
         self.hint_window.exec()
+
+    def load_file(self):
+        file_name, _ = QFileDialog.getOpenFileName(self, "Выберите файл", "",
+                                                   "JSON файлы (*.json);;Текстовые файлы (*.txt);;Все файлы (*)")
+
+        if file_name:
+            try:
+                if file_name.endswith(".json"):
+                    data = json_parser.read_json(file_name)
+                    print(f"Статус: Загружен JSON-файл. Данные: {data}")
+                    if not self.is_solving_system:
+                        parsed_data = json_parser.parse_equation(data)
+                        self.x_left_border_input.setText(str(parsed_data["x_left_border"]))
+                        self.x_right_border_input.setText(str(parsed_data["x_right_border"]))
+                        self.accuracy_input.setText(str(parsed_data["accuracy"]))
+                    else:
+                        parsed_data = json_parser.parse_system(data)
+                        self.x_left_border_input.setText(str(parsed_data["x_left_border"]))
+                        self.x_right_border_input.setText(str(parsed_data["x_right_border"]))
+                        self.y_bottom_border_input.setText(str(parsed_data["y_bottom_border"]))
+                        self.y_top_border_input.setText(str(parsed_data["y_top_border"]))
+                        self.x_start_input.setText(str(parsed_data["x_start"]))
+                        self.y_start_input.setText(str(parsed_data["y_start"]))
+                else:
+                    self.show_error("Ошибка", "Неподдерживаемый формат файла.")
+            except ValueError as e:
+                self.show_error("Ошибка", str(e))
