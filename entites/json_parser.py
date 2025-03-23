@@ -2,13 +2,6 @@ import json
 class json_parser:
     @staticmethod
     def read_json(file_name):
-        """
-        Читает JSON-файл и возвращает его содержимое.
-
-        :param file_name: Имя файла.
-        :return: Словарь с данными.
-        :raises: ValueError, если файл не может быть прочитан.
-        """
         try:
             with open(file_name, "r", encoding="utf-8") as file:
                 data = json.load(file)

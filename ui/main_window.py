@@ -10,7 +10,6 @@ import pyqtgraph as pg
 
 from entites.json_parser import json_parser
 from solvers.half_devision_solver import half_division
-from solvers.new_newton_solver import new_newton
 from solvers.newton_solver import newton
 from solvers.simple_iteration_solver import simple_iteration
 from solvers.system_simple_iteration_solver import system_simple_iteration_solver
@@ -19,7 +18,7 @@ from ui.widgets.function_selector import FunctionSelectionComboBox
 from ui.widgets.graph_widget import GraphWidget
 from ui.widgets.result_table import ResultTable
 from ui.widgets.system_combobox import SystemComboBox
-from util import parse_single_function, parse_multi_variable_function, root_counter, MAX_INTERVAL_LENGTH, \
+from util import root_counter, MAX_INTERVAL_LENGTH, \
     MIN_INTERVAL_LENGTH, SAMPLES_AMOUNT, system_functions_options
 
 
@@ -73,25 +72,8 @@ class MainWindow(QWidget):
         self.main_layout.addWidget(self.combo_box)
         self.combo_box.hide()
 
-        # Поле для ввода функции
-
         self.single_function_input.setPlaceholderText("Введите функцию, например: x**3 - 4*x + 1")
         self.main_layout.addWidget(self.single_function_input)
-
-        # self.first_system_function_input = QLineEdit(self)
-        # self.first_system_function_input.setPlaceholderText("Введите функцию, например: x**3 - 4*y + 1")
-        # self.main_layout.addWidget(self.first_system_function_input)
-        # self.first_system_function_input.hide()
-
-        # self.second_system_function_input = QLineEdit(self)
-        # self.second_system_function_input.setPlaceholderText("Введите функцию, например: sin(x) - y**2")
-        # self.main_layout.addWidget(self.second_system_function_input)
-        # self.second_system_function_input.hide()
-
-        # self.x_left_border_input = QLineEdit(self)
-        # self.x_right_border_input = QLineEdit(self)
-        # self.y_bottom_border_input = QLineEdit(self)
-        # self.y_top_border_input = QLineEdit(self)
 
         validator = QDoubleValidator()
         self.x_left_border_input.setValidator(validator)
@@ -306,32 +288,6 @@ class MainWindow(QWidget):
                 return self.try_to_assign_single_function()
         else:
             return False
-
-    # def validate_all(self):
-    #     if self.validate_x_borders() and self.validate_accuracy():
-    #         print(f"Установлена левая граница X: {self.x_left_border}")
-    #         print(f"Установлена правая граница X: {self.x_right_border}")
-    #         print(f"Установлена точность: {self.accuracy}")
-    #         if not self.is_solving_system:
-    #             return self.try_to_assign_single_function()
-    #         else:
-    #             if self.validate_y_borders():
-    #                 print(f"Установлена левая граница Y: {self.y_bottom_border}")
-    #                 print(f"Установлена правая граница Y: {self.y_top_border}")
-    #                 self.first_system_function = self.selected_value.first_func
-    #                 self.second_system_function = self.selected_value.second_func
-    #                 return self.validate_start_point()
-    #             else:
-    #                 return False
-    #     else:
-    #         return False
-
-    # def draw_graph(self):
-    #     if self.validate_all():
-    #         if not self.is_solving_system:
-    #             self.graph_widget.plot_function(self.single_function, [self.x_left_border, self.x_right_border])
-    #         else:
-    #             self.graph_widget.plot_implicit_functions(self.first_system_function, self.second_system_function, [self.x_left_border, self.x_right_border], [self.y_bottom_border, self.y_top_border], [self.x_start, self.y_start])
 
     def draw_graph(self):
         if self.validate_graph():

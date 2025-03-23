@@ -2,7 +2,6 @@
 # Добавить адаптивный дизайн
 # Добавить Decimal
 # Добавить проверки достаточных условий
-# Добавить ввод с файла
 
 import sys
 from PyQt6.QtWidgets import (QApplication)

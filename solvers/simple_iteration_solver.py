@@ -1,6 +1,6 @@
 import numpy as np
 
-from util import derivative, find_derivative_max, result_dict, ABOUT_NULL, MAX_ITERATIONS, SAMPLES_AMOUNT, df
+from util import find_derivative_abs_max, result_dict, ABOUT_NULL, MAX_ITERATIONS, SAMPLES_AMOUNT, df
 
 
 def check_convergence(a, b, phi):
@@ -9,12 +9,13 @@ def check_convergence(a, b, phi):
         if abs(df(phi, x)) >= 1 * 3: return False
     return True
 
-def simple_iteration_get_phi(a, b, func_1):
+def simple_iteration_get_phi(a, b, func):
     try:
-        abs_der_max = find_derivative_max(a, b, func_1)
+        # abs_der_max = find_derivative_max(a, b, func)
+        abs_der_max = find_derivative_abs_max(a, b, func)
         l = 1 / abs_der_max
-        if derivative(func_1, (a + b) / 2) > 0: l *= -1
-        phi = lambda x : x - l * func_1(x)
+        if df(func, (a + b) / 2) > 0: l *= -1
+        phi = lambda x : x - l * func(x)
         return phi
     except ZeroDivisionError:
         return None
@@ -24,10 +25,7 @@ def simple_iteration(a, b, e, func):
         phi = simple_iteration_get_phi(a, b, func)
         if phi is None:
             return result_dict(None, None,  0, "Ошибка при делении на 0.")
-        # phi_der_max_value = find_derivative_max(a, b, phi)
-        # if  phi_der_max_value >= 3:
-        #     return result_dict(None, None, 0, f"Достаточное условие сходимости не выполняется. ({phi_der_max_value})")
-        if not check_convergence(a, b, phi): return result_dict(None, None, 0, f"Достаточное условие сходимости не выполняется.")
+        # if not check_convergence(a, b, phi): return result_dict(None, None, 0, f"Достаточное условие сходимости не выполняется.")
         prev_arg = (a + b) / 2
         cur_arg = phi(prev_arg)
         n = 1

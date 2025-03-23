@@ -3,7 +3,7 @@ from util import result_dict
 
 def half_division(a, b, e, func):
     try:
-        n = 0 # Счётчик итераций
+        n = 0
         x = (a + b) / 2
         while abs(b - a) >= e:
             fx = func(x)

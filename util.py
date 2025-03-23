@@ -1,9 +1,4 @@
-import math
-from linecache import cache
-
-import sympy as sp
 import numpy as np
-import numdifftools as nd
 
 from entites.equation_system import System1, System2, System3
 
@@ -14,12 +9,6 @@ SAMPLES_AMOUNT = 1000
 MAX_ITERATIONS = 100000
 
 system_functions_options = [System1(), System2(), System3()]
-
-def derivative(f, x):
-    return nd.Derivative(f)(x)
-
-def second_derivative(f, x):
-    return nd.Derivative(nd.Derivative(f))(x)
 
 def df(func, x):
     dx = 0.0001
@@ -35,24 +24,6 @@ def result_dict(root, value, iter_amout, status_msg):
         value = None
         iter_amout = 0
     return {"root": root, "value": value, "iter_amount": iter_amout, "status_msg": status_msg}
-
-def parse_single_function(func_str, variable):
-    x = sp.symbols(variable)
-    try:
-        func = sp.sympify(func_str)
-        return func
-    except sp.SympifyError as error:
-        print(f"Ошибка: {error}")
-        return None
-
-def parse_multi_variable_function(func_str, variables):
-    syms = sp.symbols(variables)
-    try:
-        func = sp.sympify(func_str)
-        return func
-    except sp.SympifyError as error:
-        print(f"Ошибка: {error}")
-        return None
 
 def root_counter(a, b, func):
     n = 1000000
@@ -71,7 +42,6 @@ def root_counter(a, b, func):
         if cur * prev < 0 or abs(cur) < ABOUT_NULL:
             print(f"Найдена смена знака функции (x = {x})")
             root_cnt += 1
-            if cur * prev < 0: print(prev, cur)
             if abs(cur) < ABOUT_NULL:
                 print(cur)
                 cur = 0
@@ -81,53 +51,13 @@ def root_counter(a, b, func):
     print(root_cnt)
     return root_cnt
 
-def check_sign_consistency(func, a, b, num_points=100):
-    x_vals = np.linspace(a, b, num_points)
-    first_deriv_sign = np.sign(derivative(func, x_vals[0]))
-    second_deriv_sign = np.sign(second_derivative(func, x_vals[0]))
-
-    for x in x_vals[1:]:
-        d1 = np.sign(derivative(func, x))
-        d2 = np.sign(second_derivative(func, x))
-
-        if d1 != first_deriv_sign or d2 != second_deriv_sign:
-            return False
-    return True
-
-def is_changing_sign(func, a, b):
+def find_derivative_abs_max(a, b, func):
     x_vals = np.linspace(a, b, SAMPLES_AMOUNT)
-    s = func(x_vals[0])
-    for x in x_vals[1:]:
-        new_s = func(x)
-        if new_s * s < 0: return True
-        s = new_s
-    return False
+    return max(abs(df(func, x_vals)))
 
-def find_derivative_max(a, b, func, samples_amount=100):
-    x = a
-    abs_max_value = abs(derivative(func, x))
-    while x < b:
-        if abs(derivative(func, x)) > abs_max_value:
-            abs_max_value = abs(derivative(func, x))
-        x += abs(b - a) / samples_amount
-    return abs_max_value
-
-def partial_derivative(f_lambda, variables, diff_var, point):
-    f_sympy = f_lambda(*variables)
-    df_dvar = sp.diff(f_sympy, diff_var)
-    df_dvar_lambda = sp.lambdify(variables, df_dvar, 'numpy')
-    return df_dvar_lambda(*point)
-
-# # Определяем переменные
-# x, y = sp.symbols('x y')
-#
-# # Пример лямбда-функции
-# f_lambda = lambda x, y: x ** 2 + 3 * x * y + y ** 2
-#
-# # Вычисляем ∂f/∂x в точке (1, 2)
-# result = partial_derivative(f_lambda, (x, y), x, (1, 2))
-# print("∂f/∂x в точке (1,2):", result)
-
+def find_func_abs_max(a, b, func):
+    x_vals = np.linspace(a, b, SAMPLES_AMOUNT)
+    return max(abs(func(x_vals)))
 
 def load_stylesheet(filename):
     """Загружает стили из CSS-файла."""
