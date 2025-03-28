@@ -1,7 +1,6 @@
 from PyQt6.QtWidgets import QComboBox
 
-from entites.equation_system import System1
-from util import system_functions_options # Импортируем словарь
+from utils.calcs_util import system_functions_options # Импортируем словарь
 
 class SystemComboBox(QComboBox):
     def __init__(self, parent=None):

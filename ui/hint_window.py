@@ -10,7 +10,7 @@ class HintWindow(QDialog):
         layout = QVBoxLayout()
         self.setLayout(layout)
         self.hint_text = QTextEdit(self)
-        self.hint_text.setReadOnly(True)  # Запрещаем редактирование
+        self.hint_text.setReadOnly(True)
         self.hint_text.setPlainText(
             "Задавайте уравнение в виде функции f(x), такой что f(x) = 0.\n\n"
             "Примеры ввода функций:\n\n"

@@ -7,10 +7,7 @@ class json_parser:
                 data = json.load(file)
             return data
         except json.JSONDecodeError as e:
-            if "Invalid control character" in str(e):
-                raise json.JSONDecodeError("Ошибка: Недопустимый управляющий символ в JSON", e.doc, e.pos)
-            else:
-                raise json.JSONDecodeError(f"Ошибка парсинга JSON: {e}", e.doc, e.pos)
+            raise json.JSONDecodeError(f"Ошибка парсинга JSON: {e}", e.doc, e.pos)
         except Exception as e:
             raise ValueError(f"Ошибка чтения файла: {str(e)}")
 

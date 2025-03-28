@@ -1,6 +1,6 @@
 import numpy as np
 
-from util import MAX_ITERATIONS, result_dict, SAMPLES_AMOUNT, dff, df
+from utils.calcs_util import MAX_ITERATIONS, result_dict, SAMPLES_AMOUNT, dff, df
 
 
 def get_starting_point(a, b):

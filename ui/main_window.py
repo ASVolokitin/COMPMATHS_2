@@ -1,12 +1,11 @@
+import csv
 import math
 
-import numpy as np
 import sympy as sp
-from PyQt6.QtWidgets import (QWidget, QLineEdit, QPushButton, QMessageBox, QVBoxLayout, QHBoxLayout, QTableWidget,
-                             QTableWidgetItem, QDialog, QTextEdit,
-                             QFileDialog, QComboBox, QGraphicsDropShadowEffect)
-from PyQt6.QtGui import QDoubleValidator, QColor
-import pyqtgraph as pg
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (QWidget, QLineEdit, QPushButton, QMessageBox, QVBoxLayout, QHBoxLayout,
+                             QFileDialog, QCheckBox, QSizePolicy)
+from PyQt6.QtGui import QDoubleValidator
 
 from entites.json_parser import json_parser
 from solvers.half_devision_solver import half_division
@@ -14,17 +13,18 @@ from solvers.newton_solver import newton
 from solvers.simple_iteration_solver import simple_iteration
 from solvers.system_simple_iteration_solver import system_simple_iteration_solver
 from ui.hint_window import HintWindow
-from ui.widgets.function_selector import FunctionSelectionComboBox
 from ui.widgets.graph_widget import GraphWidget
 from ui.widgets.result_table import ResultTable
 from ui.widgets.system_combobox import SystemComboBox
-from util import root_counter, MAX_INTERVAL_LENGTH, \
-    MIN_INTERVAL_LENGTH, SAMPLES_AMOUNT, system_functions_options
+from utils.calcs_util import root_counter, MAX_INTERVAL_LENGTH, MIN_INTERVAL_LENGTH, system_functions_options, \
+    RootCounterErrorCode
+from utils.ui_util import load_stylesheet
 
 
 class MainWindow(QWidget):
-    def __init__(self):
+    def __init__(self, app):
         super().__init__()
+        self.app = app
         self.system_functions_options = system_functions_options
         self.selected_value = system_functions_options[0]
         self.first_system_function_text = None
@@ -45,10 +45,6 @@ class MainWindow(QWidget):
         self.solve_equation_button = QPushButton("Решить уравнение")
         self.hints_button = QPushButton("Подсказки по вводу", self)
         self.load_file_button = QPushButton("Загрузить из файла")
-        # self.first_system_function_input = None
-        # self.second_system_function_input = None
-        # self.second_system_function_text = None
-        # self.second_system_function = None
         self.single_function_text = None
         self.single_function = None
         self.x_left_border = -1
@@ -59,11 +55,12 @@ class MainWindow(QWidget):
         self.y_input_layout = QHBoxLayout()
         self.accuracy = 0.05
         self.is_solving_system = False
+        self.dev_mode = False
         self.initializeUI()
 
     def initializeUI(self):
         self.setWindowTitle("Поиск корней функции")
-        self.setGeometry(0, 0, 600, 800)
+        self.setGeometry(0, 0, 760, 800)
 
         self.main_layout = QVBoxLayout()
 
@@ -128,22 +125,30 @@ class MainWindow(QWidget):
         button_layout.addWidget(self.load_file_button)
         self.load_file_button.clicked.connect(self.load_file)
 
-        # Виджет для отображения графика (PyQtGraph)
-        self.graph_widget = GraphWidget()
-        self.main_layout.addWidget(self.graph_widget)
 
         self.calc_button = QPushButton("Вычислить", self)
         self.calc_button.clicked.connect(self.calculate)
         self.main_layout.addWidget(self.calc_button)
 
+        graph_layout = QHBoxLayout()
+        self.graph_widget = GraphWidget()
+        graph_layout.addWidget(self.graph_widget)
+        graph_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.main_layout.addLayout(graph_layout)
+
         self.result_table = ResultTable()
-        self.main_layout.addWidget(self.result_table)
+        self.result_table.setMaximumHeight(140)
+        self.result_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.main_layout.addWidget(self.result_table, stretch=0)
 
         self.save_button = QPushButton("Сохранить результаты в файл", self)
         self.save_button.clicked.connect(self.save_results)
         self.main_layout.addWidget(self.save_button)
         self.save_button.hide()
 
+        self.switch = QCheckBox("Режим разработчика")
+        self.main_layout.addWidget(self.switch)
+        self.switch.toggled.connect(self.toggle_dev_mode)
         self.setLayout(self.main_layout)
 
     def update_system_combobox(self, key):
@@ -229,19 +234,20 @@ class MainWindow(QWidget):
             self.show_error("Ошибка", "Введите функцию")
             return False
         try:
-
             expr = sp.sympify(function_text)
             variables = expr.free_symbols
             if not variables.issubset({sp.Symbol('x')}):
                 self.show_error("Ошибка", "Функция должна содержать только переменную x.")
                 return False
-
+            if str(expr) == "zoo":
+                self.show_error("Ошибка", "Введённое выражение является неопределённостью")
+                return False
             self.single_function = sp.lambdify(sp.symbols('x'), expr, 'numpy')
             self.single_function_text = function_text
             try:
                 self.single_function(math.pi)
             except ZeroDivisionError:
-                pass
+                self.show_error("Функция не определена на всём интервале, рассмотрите другой.")
             if self.single_function is None:
                 self.show_error("Ошибка", "Не удалось распознать функцию, обратитесь к подсказкам по вводу.")
                 return False
@@ -290,14 +296,17 @@ class MainWindow(QWidget):
             return False
 
     def draw_graph(self):
-        if self.validate_graph():
-            if self.is_solving_system:
-                self.graph_widget.plot_implicit_functions(self.first_system_function, self.second_system_function,
-                                                          [self.x_left_border, self.x_right_border],
-                                                          [self.y_bottom_border, self.y_top_border],
-                                                          [self.x_start, self.y_start])
-            else:
-                self.graph_widget.plot_function(self.single_function, [self.x_left_border, self.x_right_border])
+        try:
+            if self.validate_graph():
+                if self.is_solving_system:
+                    self.graph_widget.plot_implicit_functions(self.selected_value,
+                                                              [self.x_left_border, self.x_right_border],
+                                                              [self.y_bottom_border, self.y_top_border],
+                                                              [self.x_start, self.y_start])
+                else:
+                    self.graph_widget.plot_function(self.single_function, self.single_function_text, [self.x_left_border, self.x_right_border])
+        except RuntimeWarning:
+            print("бабабабуубу")
 
     def add_function(self):
         self.single_function_input.hide()
@@ -330,7 +339,7 @@ class MainWindow(QWidget):
         self.result_table.clear_table()
 
     def calculate(self):
-        # try:
+        try:
             if self.validate_all():
                 self.draw_graph()
                 if not self.is_solving_system:
@@ -338,31 +347,30 @@ class MainWindow(QWidget):
                     if root_amount != 1:
                         self.result_table.clearContents()
                         self.result_table.setRowCount(0)
-                        self.show_error("Ошибка диапазона", "Для корректной работы необходимо выбрать интервал, содержащий ровно 1 корень.")
+                        if root_amount == RootCounterErrorCode.MORE_THAN_ONE_ROOT:
+                            self.show_error("Ошибка диапазона", "Для корректной работы необходимо выбрать интервал, содержащий только 1 корень")
+                        elif root_amount == RootCounterErrorCode.DISCONTINUED_FUNCTION:
+                            self.show_error("Ошибка диапазона", "Для корректной работы необходимо выбрать интервал, где функция везде дифференцируема, выбранная функция терпит неустранивый разрыв.")
                         return False
                     else:
                         self.calculate_one()
                 else:
                     self.calculate_system()
-
-
-        # except (AttributeError, TypeError, NameError) as e:
-        #     self.show_error("Ошибка", "Ошибка: Функция введена некорректно, обратитесь к подсказкам по вводу функций.")
+        except (AttributeError, TypeError, NameError) as e:
+            self.show_error("Ошибка", "Ошибка: Функция введена некорректно, обратитесь к подсказкам по вводу функций.")
 
     def calculate_one(self):
         results = []
         results.append(("Метод половинного деления", half_division(self.x_left_border, self.x_right_border, self.accuracy, self.single_function)))
-        # results.append(("Метод Ньютона", new_newton(self.x_left_border, self.x_right_border, self.accuracy, self.single_function)))
-        results.append(("Метод Ньютона", newton(self.x_left_border, self.x_right_border, self.accuracy, self.single_function)))
-        results.append(("Метод простой итерации", simple_iteration(self.x_left_border, self.x_right_border, self.accuracy, self.single_function)))
+        results.append(("Метод Ньютона", newton(self.x_left_border, self.x_right_border, self.accuracy, self.single_function, self.dev_mode)))
+        results.append(("Метод простой итерации", simple_iteration(self.x_left_border, self.x_right_border, self.accuracy, self.single_function, self.dev_mode)))
         self.save_button.show()
         self.result_table.update_result_table_solo(results)
         return results
 
     def calculate_system(self):
         results = []
-        results.append(("Метод простой итерации", system_simple_iteration_solver(self.x_left_border, self.x_right_border, self.y_bottom_border, self.y_top_border, self.x_start, self.y_start, self.accuracy, self.selected_value)))
-        print(results)
+        results.append(("Метод простой итерации", system_simple_iteration_solver(self.x_left_border, self.x_right_border, self.y_bottom_border, self.y_top_border, self.x_start, self.y_start, self.accuracy, self.selected_value, self.dev_mode)))
         self.save_button.show()
         self.result_table.update_result_table_system(results)
         return results
@@ -371,31 +379,60 @@ class MainWindow(QWidget):
         try:
             if self.result_table.rowCount() == 0:
                 self.show_error("Ошибка", "Нет данных для сохранения.")
-                return
+                return False
 
-            file_path, _ = QFileDialog.getSaveFileName(self, "Сохранить результаты", "", "Text Files (*.txt);;All Files (*)")
+            file_path, _ = QFileDialog.getSaveFileName(
+                self,
+                "Сохранить результаты",
+                "",
+                "CSV Files (*.csv);;All Files (*)"
+            )
 
-            if not file_path:
-                return
+            if not file_path: return False
 
-            with open(file_path, "w", encoding="utf-8") as file:
-                headers = [self.result_table.horizontalHeaderItem(i).text() for i in
-                           range(self.result_table.columnCount())]
-                file.write("\t".join(headers) + "\n")
+            if not file_path.lower().endswith('.csv'): file_path += '.csv'
 
-                for row in range(self.result_table.rowCount()):
-                    row_data = []
-                    for col in range(self.result_table.columnCount()):
-                        item = self.result_table.item(row, col)
-                        row_data.append(item.text() if item else "")
-                    file.write("\t".join(row_data) + "\n")
+            data_rows = []
+            headers = [self.result_table.horizontalHeaderItem(i).text()
+                       for i in range(self.result_table.columnCount())]
 
-            QMessageBox.information(self, "Успех", "Результаты успешно сохранены.")
+            for row in range(self.result_table.rowCount()):
+                row_data = []
+                for col in range(self.result_table.columnCount()):
+                    item = self.result_table.item(row, col)
+                    row_data.append(item.text() if item else "")
+                data_rows.append(row_data)
+
+            metadata = [
+                f"# Функция: {self.single_function_text}" if not self.is_solving_system
+                else f"# Первое уравнение системы: {self.selected_value.first_func_text}\n # Второе уравнение системы: {self.selected_value.second_func_text}\n",
+                f"# Интервал по X: [{self.x_left_border}, {self.x_right_border}]",
+                f"# Точность: {self.accuracy}"
+            ]
+
+            if self.is_solving_system:
+                metadata.extend([
+                    f"# Интервал по Y: [{self.y_bottom_border}, {self.y_top_border}]",
+                    f"# Начальное приближение: ({self.x_start}, {self.y_start})"
+                ])
+
+            with open(file_path, 'w', newline='', encoding='utf-8-sig') as csvfile:
+                for line in metadata:
+                    csvfile.write(line + '\n')
+
+                writer = csv.writer(csvfile, delimiter=';', quotechar='"',quoting=csv.QUOTE_MINIMAL)
+
+                writer.writerow(headers)
+                writer.writerows(data_rows)
+            QMessageBox.information(self, "Успех", "Результаты успешно сохранены в CSV файл.")
+            return True
 
         except PermissionError:
-            self.show_error("Ошибка", "Нет доступа для записи в файл.")
+            self.show_error("Ошибка", "Нет прав для записи в указанный файл.")
+            return False
         except Exception as e:
-            self.show_error("Ошибка", f"Произошла ошибка при сохранении: {str(e)}")
+            self.show_error("Ошибка", f"Произошла ошибка при сохранении CSV:\n{str(e)}")
+            return False
 
     def show_error(self, title, message):
         error_dialog = QMessageBox(self)
@@ -407,6 +444,14 @@ class MainWindow(QWidget):
     def show_hints(self):
         self.hint_window = HintWindow()
         self.hint_window.exec()
+
+    def toggle_dev_mode(self):
+        if self.dev_mode:
+            self.app.setStyleSheet(load_stylesheet("style/light_mode.css"))
+        else:
+            self.app.setStyleSheet(load_stylesheet("style/dark_mode.css"))
+        self.dev_mode = not self.dev_mode
+
 
     def load_file(self):
         file_name, _ = QFileDialog.getOpenFileName(self, "Выберите файл", "",

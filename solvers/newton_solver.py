@@ -1,31 +1,21 @@
+from typing import Callable
+
 import numpy as np
-from util import result_dict, MAX_INTERVAL_LENGTH, ABOUT_NULL, SAMPLES_AMOUNT, df, dff, MAX_ITERATIONS
+from utils.calcs_util import result_dict, MAX_INTERVAL_LENGTH, ABOUT_NULL, df, MAX_ITERATIONS, \
+    first_derivative_chages_sign, second_derivative_chages_sign, first_derivative_becomes_null, dff
 
-def check_convergence(func, a, b):
-    x_vals = np.linspace(a, b, SAMPLES_AMOUNT)
-    df_x = df(func, x_vals[0])
-    for x in x_vals[1:]:
-        new_df_x = df(func, x)
-        if new_df_x * df_x < 0:
-            return False
-        df_x = new_df_x
 
-    x_vals = np.linspace(a, b, SAMPLES_AMOUNT)
-    df_x = dff(func, x_vals[0])
-    for x in x_vals[1:]:
-        new_df_x = dff(func, x)
-        if new_df_x * df_x < 0:
-            return False
-        df_x = new_df_x
-
+def check_convergence(func : Callable[[float], float], a : float, b : float) -> bool:
+    if first_derivative_chages_sign(a, b, func) or second_derivative_chages_sign(a, b, func) or first_derivative_becomes_null(a, b, func): return False
     return df(func, a) != 0 and df(func, b) != 0
 
-def newton(a, b, e, func):
-    # if not check_convergence(func, a, b): return result_dict(None, None, 0, "Не сходится")
+def newton(a : float, b : float, e : float, func : Callable[[float], float], dev_mode : bool) -> {}:
+    if not dev_mode:
+        if not check_convergence(func, a, b): return result_dict(None, None, 0, "Не сходится")
     try:
-        x = (a + b) / 2
+        x = b if df(func, b) * dff(func, b) > 0 else a
         n = 0
-        for i in range(MAX_INTERVAL_LENGTH):
+        for i in range(MAX_ITERATIONS):
             df_x = df(func, x)
             if np.isnan(df_x) or abs(df_x) < ABOUT_NULL:
                 return result_dict(None, None, 0, "Производная слишком мала или не определена в точке исследования.")
@@ -39,7 +29,6 @@ def newton(a, b, e, func):
                 return result_dict(x_new, func(x), n, "OK")
 
             x = x_new
-        # if not check_sign_consistency(func, a, b) or df(func, x) < ABOUT_NULL: return result_dict(None, None, 0)
         if x < a or x > b: return result_dict(None, None, 0, "Выход за границы интервала")
         return result_dict(x, func(x), n, "OK")
     except ZeroDivisionError:

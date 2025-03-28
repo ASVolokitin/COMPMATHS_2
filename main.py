@@ -1,16 +1,13 @@
-# TODO
-# Добавить адаптивный дизайн
-# Добавить Decimal
-# Добавить проверки достаточных условий
+# отладить арккотангенс, 1/x
 
 import sys
 from PyQt6.QtWidgets import (QApplication)
 from ui.main_window import MainWindow
-from util import load_stylesheet
+from utils.ui_util import load_stylesheet
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    app.setStyleSheet(load_stylesheet("style/style.css"))
-    window = MainWindow()
+    app.setStyleSheet(load_stylesheet("style/light_mode.css"))
+    window = MainWindow(app)
     window.show()
     sys.exit(app.exec())

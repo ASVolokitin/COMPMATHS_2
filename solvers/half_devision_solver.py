@@ -1,7 +1,9 @@
-from util import result_dict
+from collections.abc import Callable
+
+from utils.calcs_util import result_dict
 
 
-def half_division(a, b, e, func):
+def half_division(a : float, b : float, e : float, func : Callable[[float], float]) -> {}:
     try:
         n = 0
         x = (a + b) / 2

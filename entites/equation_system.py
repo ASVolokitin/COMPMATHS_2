@@ -40,12 +40,12 @@ class System2(EquationSystem):
         super().__init__(
             name="Система 2",
             first_func=lambda x, y: x - y**2 * np.sin(3 * y),
-            first_func_text="бла бла",
+            first_func_text="x - y**2 * sin(3 * y",
             first_phi=lambda x, y: y**2 * np.sin(3 * y),
             first_phi_dx=0,
             first_phi_dy=0,
             second_func=lambda x, y: y - x**2,
-            second_func_text="бла бла бла",
+            second_func_text="y - x**2",
             second_phi=lambda x, y: x**2,
             second_phi_dx=0,
             second_phi_dy=0
