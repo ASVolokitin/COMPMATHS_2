@@ -4,12 +4,12 @@ import numpy as np
 
 from entites.equation_system import System1, System2, System3
 
-ABOUT_NULL = 1e-6
+ABOUT_NULL = 1e-9
 MAX_INTERVAL_LENGTH = 1000000
 MIN_INTERVAL_LENGTH = 0.5
 SAMPLES_AMOUNT = 1000
 MAX_ITERATIONS = 100000
-MAX_DELTA = 100
+MAX_DELTA = 2
 dx = 0.0001
 
 class RootCounterErrorCode(Enum):
@@ -20,7 +20,6 @@ class RootCounterErrorCode(Enum):
 system_functions_options = [System1(), System2(), System3()]
 
 def df(func, x):
-
     return (func(x + dx) - func(x - dx)) / (2 * dx)
 
 def dff(func, x):
@@ -47,7 +46,7 @@ def root_counter(a, b, func):
         if abs(cur - prev) > MAX_DELTA:
             print(f"Функция терпит разрыв в точке {x}")
             return RootCounterErrorCode.DISCONTINUED_FUNCTION
-        if cur * prev < 0 or abs(cur) < ABOUT_NULL:
+        if cur * prev < 0 or cur == 0:
             print(f"Найдена смена знака функции (x = {x}); cur = {cur}, prev = {prev}")
             root_cnt += 1
             if root_cnt > 1:
@@ -57,6 +56,7 @@ def root_counter(a, b, func):
                 print(cur)
                 cur = 0
         prev = cur
+    if root_cnt == 0: return RootCounterErrorCode.NO_ROOTS
     print("Обход завершён")
     return root_cnt
 

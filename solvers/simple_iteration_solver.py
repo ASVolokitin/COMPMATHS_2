@@ -43,6 +43,6 @@ def simple_iteration(a : float, b : float, e : float, func : Callable[[float], f
                 cur_arg = phi(prev_arg)
                 n += 1
 
-        return result_dict(cur_arg, func(cur_arg), n, "OK")
+        return result_dict(cur_arg, func(cur_arg), n, "OK") if abs(func(cur_arg)) < ABOUT_NULL else result_dict(None, None, 0, "Не сходится")
     except ZeroDivisionError:
         return result_dict(None, None, 0, "Ошибка при делении на 0.")

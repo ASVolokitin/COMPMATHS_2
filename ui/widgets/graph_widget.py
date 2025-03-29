@@ -4,7 +4,7 @@ import matplotlib.colors as mcolors
 from PyQt6.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy, QHBoxLayout, QLabel
 
 from entites.equation_system import EquationSystem
 from utils.calcs_util import SAMPLES_AMOUNT
@@ -15,18 +15,22 @@ class GraphWidget(QWidget):
         super().__init__(parent)
         self.figure, self.ax = plt.subplots()
         self.canvas = FigureCanvas(self.figure)
-        self.toolbar = NavigationToolbar(self.canvas, self)  # Добавляем тулбар для масштабирования
+        self.toolbar = NavigationToolbar(self.canvas, self)
 
         self.ax.spines['top'].set_visible(False)
         self.ax.spines['right'].set_visible(False)
         self.ax.spines['bottom'].set_visible(False)
         self.ax.spines['left'].set_visible(False)
 
-        self.ax.grid(True)  # Добавляем сетку
+        self.ax.grid(True)
+        self.main_layout = QHBoxLayout()
         layout = QVBoxLayout()
         layout.addWidget(self.toolbar)
-        layout.addWidget(self.canvas, alignment=Qt.AlignmentFlag.AlignHCenter)  # Выравнивание по центру
-        self.setLayout(layout)
+        layout.addWidget(self.canvas, alignment=Qt.AlignmentFlag.AlignHCenter)
+        self.main_layout.addLayout(layout)
+        self.setLayout(self.main_layout)
+        self.func_text = QLabel("")
+        self.main_layout.addWidget(self.func_text)
 
     def plot_function(self, func, func_text, x_range):
         self.ax.clear()
@@ -37,6 +41,8 @@ class GraphWidget(QWidget):
         self.ax.axvline(0, color='black', linewidth=1)
         self.ax.legend()
         self.ax.grid(True)
+        self.func_text.setText("")
+        # self.main_layout.removeWidget(func_text)
         self.canvas.draw()
 
     def plot_implicit_functions(self, selected_value : EquationSystem, x_range, y_range, start_point):
@@ -54,8 +60,8 @@ class GraphWidget(QWidget):
         self.ax.axhline(0, color='black', linewidth=1)
         self.ax.axvline(0, color='black', linewidth=1)
         self.ax.scatter(start_point[0], start_point[1], color='green', s=50)
-        # self.ax.set_title(f"Графики уравнений {selected_value.first_func_text} и {selected_value.second_func_text}")
         if len(self.ax.get_legend_handles_labels()[0]) > 0:
             self.ax.legend()
         self.ax.grid(True)
+        self.func_text.setText("f1(x, y) = " + selected_value.first_func_text + '\nf2(x, y) = ' + selected_value.second_func_text)
         self.canvas.draw()

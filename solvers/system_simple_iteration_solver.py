@@ -4,7 +4,7 @@ from entites.equation_system import EquationSystem
 from utils.calcs_util import MAX_ITERATIONS, result_dict, SAMPLES_AMOUNT
 
 
-def detect_abs_max(x_left : float, x_right : float, y_bottom : float, y_top : float, func : Callable[[float], float]) -> float:
+def detect_abs_max(x_left : float, x_right : float, y_bottom : float, y_top : float, func : Callable[[float, float], float]) -> float:
     x = np.linspace(x_left, x_right, SAMPLES_AMOUNT)
     y = np.linspace(y_bottom, y_top, SAMPLES_AMOUNT)
     X, Y = np.meshgrid(x, y)
@@ -13,8 +13,8 @@ def detect_abs_max(x_left : float, x_right : float, y_bottom : float, y_top : fl
     return np.max(np.abs(Z))
 
 def check_convergence(x_left : float, x_right : float, y_bottom : float, y_top : float, system : EquationSystem) -> bool:
-    if detect_abs_max(x_left, x_right, y_bottom, y_top, system.first_phi_dx) + detect_abs_max(x_left, x_right, y_bottom, y_top, system.first_phi_dy) < 1:
-        if detect_abs_max(x_left, x_right, y_bottom, y_top, system.second_phi_dx) + detect_abs_max(x_left, x_right, y_bottom, y_top, system.second_phi_dy) < 1:
+    if detect_abs_max(x_left, x_right, y_bottom, y_top, system.first_phi_dx) + detect_abs_max(x_left, x_right, y_bottom, y_top, system.first_phi_dy) < 1 * 2:
+        if detect_abs_max(x_left, x_right, y_bottom, y_top, system.second_phi_dx) + detect_abs_max(x_left, x_right, y_bottom, y_top, system.second_phi_dy) < 1 * 2:
             return True
     return False
 

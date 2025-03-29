@@ -1,6 +1,5 @@
 from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView
 
-
 class ResultTable(QTableWidget):
     def __init__(self, parent=None):
         super().__init__(0, 4, parent)
@@ -17,7 +16,7 @@ class ResultTable(QTableWidget):
         for row, (method, data) in enumerate(results):
             self.setItem(row, 0, QTableWidgetItem(method))
             self.setItem(row, 1, QTableWidgetItem(str(data["iter_amount"]) if data["status_msg"] == "OK" else data["status_msg"]))
-            self.setItem(row, 2, QTableWidgetItem("Не найден" if data['root'] is None else f"{data['root']:.15f}"))
+            self.setItem(row, 2, QTableWidgetItem("Не найден" if (data['root']) is None else f"{data['root']:.15f}"))
             self.setItem(row, 3, QTableWidgetItem("Метод не применим" if data['value'] is None else f"{data['value']:.15f}"))
         self.resizeColumnsToContents()
         self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)

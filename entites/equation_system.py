@@ -26,11 +26,11 @@ class System1(EquationSystem):
             first_func=lambda x, y: 3 * x + x ** 3 + (y - 1) ** 2 - 2,
             first_func_text="3 * x + x ** 3 + (y - 1) ** 2 - 2",
             first_phi=lambda x, y: -(x ** 3 + (y - 1) ** 2 - 2) / 3,
-            first_phi_dx=lambda x, y: -x**2,
-            first_phi_dy=lambda x, y: -2*(y + 1) / 3,
-            second_func=lambda x, y: x**2 - 2 * y,
+            first_phi_dx=lambda x, y: -x ** 2,
+            first_phi_dy=lambda x, y: -2 * (y + 1) / 3,
+            second_func=lambda x, y: x ** 2 - 2 * y,
             second_func_text="x**2 - 2 * y",
-            second_phi=lambda x, y: x**2 / 2,
+            second_phi=lambda x, y: x ** 2 / 2,
             second_phi_dx=lambda x, y: x,
             second_phi_dy=lambda x, y: 0
         )
@@ -39,16 +39,16 @@ class System2(EquationSystem):
     def __init__(self):
         super().__init__(
             name="Система 2",
-            first_func=lambda x, y: x - y**2 * np.sin(3 * y),
-            first_func_text="x - y**2 * sin(3 * y",
-            first_phi=lambda x, y: y**2 * np.sin(3 * y),
-            first_phi_dx=0,
-            first_phi_dy=0,
-            second_func=lambda x, y: y - x**2,
-            second_func_text="y - x**2",
-            second_phi=lambda x, y: x**2,
-            second_phi_dx=0,
-            second_phi_dy=0
+            first_func=lambda x, y: 0.3 * np.sin(y) + 0.1 - x,
+            first_func_text="0.3 * np.sin(y) + 0.1 - x",
+            first_phi=lambda x, y: 0.3 * np.sin(y) + 0.1,
+            first_phi_dx=lambda x, y: 0,
+            first_phi_dy=lambda x, y: 0.3 * np.cos(y),
+            second_func=lambda x, y: 0.3 * np.cos(x) + 0.2 - y,
+            second_func_text="0.3 * np.cos(x) + 0.2 - y",
+            second_phi=lambda x, y: 0.3 * np.cos(x) + 0.2,
+            second_phi_dx=lambda x, y: -0.3 * np.cos(x),
+            second_phi_dy=lambda x, y: 0
         )
 
 class System3(EquationSystem):

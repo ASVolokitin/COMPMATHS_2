@@ -2,6 +2,7 @@ import csv
 import math
 
 import sympy as sp
+from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (QWidget, QLineEdit, QPushButton, QMessageBox, QVBoxLayout, QHBoxLayout,
                              QFileDialog, QCheckBox, QSizePolicy)
@@ -59,7 +60,7 @@ class MainWindow(QWidget):
         self.initializeUI()
 
     def initializeUI(self):
-        self.setWindowTitle("Поиск корней функции")
+        self.setWindowTitle("Добро пожаловать в программу Никиты Копытова")
         self.setGeometry(0, 0, 760, 800)
 
         self.main_layout = QVBoxLayout()
@@ -138,6 +139,7 @@ class MainWindow(QWidget):
 
         self.result_table = ResultTable()
         self.result_table.setMaximumHeight(140)
+        # self.result_table.setDisabled(True)
         self.result_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.main_layout.addWidget(self.result_table, stretch=0)
 
@@ -296,7 +298,7 @@ class MainWindow(QWidget):
             return False
 
     def draw_graph(self):
-        try:
+        # try:
             if self.validate_graph():
                 if self.is_solving_system:
                     self.graph_widget.plot_implicit_functions(self.selected_value,
@@ -305,8 +307,7 @@ class MainWindow(QWidget):
                                                               [self.x_start, self.y_start])
                 else:
                     self.graph_widget.plot_function(self.single_function, self.single_function_text, [self.x_left_border, self.x_right_border])
-        except RuntimeWarning:
-            print("бабабабуубу")
+
 
     def add_function(self):
         self.single_function_input.hide()
@@ -339,7 +340,7 @@ class MainWindow(QWidget):
         self.result_table.clear_table()
 
     def calculate(self):
-        try:
+        # try:
             if self.validate_all():
                 self.draw_graph()
                 if not self.is_solving_system:
@@ -347,8 +348,8 @@ class MainWindow(QWidget):
                     if root_amount != 1:
                         self.result_table.clearContents()
                         self.result_table.setRowCount(0)
-                        if root_amount == RootCounterErrorCode.MORE_THAN_ONE_ROOT:
-                            self.show_error("Ошибка диапазона", "Для корректной работы необходимо выбрать интервал, содержащий только 1 корень")
+                        if root_amount == RootCounterErrorCode.MORE_THAN_ONE_ROOT or root_amount == RootCounterErrorCode.NO_ROOTS:
+                            self.show_error("Ошибка диапазона", "Для корректной работы необходимо выбрать интервал, где функция пересекает OX единожды.")
                         elif root_amount == RootCounterErrorCode.DISCONTINUED_FUNCTION:
                             self.show_error("Ошибка диапазона", "Для корректной работы необходимо выбрать интервал, где функция везде дифференцируема, выбранная функция терпит неустранивый разрыв.")
                         return False
@@ -356,14 +357,17 @@ class MainWindow(QWidget):
                         self.calculate_one()
                 else:
                     self.calculate_system()
-        except (AttributeError, TypeError, NameError) as e:
-            self.show_error("Ошибка", "Ошибка: Функция введена некорректно, обратитесь к подсказкам по вводу функций.")
+        # except (AttributeError, TypeError, NameError) as e:
+        #     self.show_error("Ошибка", "Ошибка: Функция введена некорректно, обратитесь к подсказкам по вводу функций.")
 
     def calculate_one(self):
         results = []
         results.append(("Метод половинного деления", half_division(self.x_left_border, self.x_right_border, self.accuracy, self.single_function)))
+        print("раз")
         results.append(("Метод Ньютона", newton(self.x_left_border, self.x_right_border, self.accuracy, self.single_function, self.dev_mode)))
+        print("два")
         results.append(("Метод простой итерации", simple_iteration(self.x_left_border, self.x_right_border, self.accuracy, self.single_function, self.dev_mode)))
+        print("три")
         self.save_button.show()
         self.result_table.update_result_table_solo(results)
         return results
@@ -405,7 +409,7 @@ class MainWindow(QWidget):
 
             metadata = [
                 f"# Функция: {self.single_function_text}" if not self.is_solving_system
-                else f"# Первое уравнение системы: {self.selected_value.first_func_text}\n # Второе уравнение системы: {self.selected_value.second_func_text}\n",
+                else f"# Первое уравнение системы: {self.selected_value.first_func_text}\n # Второе уравнение системы: {self.selected_value.second_func_text}",
                 f"# Интервал по X: [{self.x_left_border}, {self.x_right_border}]",
                 f"# Точность: {self.accuracy}"
             ]
