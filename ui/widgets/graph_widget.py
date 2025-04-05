@@ -34,15 +34,16 @@ class GraphWidget(QWidget):
 
     def plot_function(self, func, func_text, x_range):
         self.ax.clear()
+        print(x_range)
         x = np.linspace(x_range[0], x_range[1], SAMPLES_AMOUNT)
         y = np.array([func(xi) for xi in x])
         self.ax.plot(x, y, label=func_text + '=0', color='darkslateblue')
         self.ax.axhline(0, color='black', linewidth=1)
         self.ax.axvline(0, color='black', linewidth=1)
+        self.ax.set_xlim(x_range[0], x_range[1])
         self.ax.legend()
         self.ax.grid(True)
         self.func_text.setText("")
-        # self.main_layout.removeWidget(func_text)
         self.canvas.draw()
 
     def plot_implicit_functions(self, selected_value : EquationSystem, x_range, y_range, start_point):
@@ -60,8 +61,15 @@ class GraphWidget(QWidget):
         self.ax.axhline(0, color='black', linewidth=1)
         self.ax.axvline(0, color='black', linewidth=1)
         self.ax.scatter(start_point[0], start_point[1], color='green', s=50)
+        self.ax.set_xlim(x_range[0], x_range[1])
+        self.ax.set_ylim(y_range[0], y_range[1])
         if len(self.ax.get_legend_handles_labels()[0]) > 0:
             self.ax.legend()
         self.ax.grid(True)
         self.func_text.setText("f1(x, y) = " + selected_value.first_func_text + '\nf2(x, y) = ' + selected_value.second_func_text)
+        self.canvas.draw()
+
+    def add_solution_point(self, x, y):
+        print(x, y, "для точки")
+        self.ax.scatter(x, y, color='darkslateblue')
         self.canvas.draw()

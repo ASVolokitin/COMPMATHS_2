@@ -44,8 +44,8 @@ class MainWindow(QWidget):
         self.draw_graph_button = QPushButton("Построить")
         self.solve_system_button = QPushButton("Решить систему")
         self.solve_equation_button = QPushButton("Решить уравнение")
-        self.hints_button = QPushButton("Подсказки по вводу", self)
         self.load_file_button = QPushButton("Загрузить из файла")
+        self.hints_button = QPushButton("Подсказки по вводу", self)
         self.single_function_text = None
         self.single_function = None
         self.x_left_border = -1
@@ -120,12 +120,11 @@ class MainWindow(QWidget):
         self.y_top_border_input.hide()
         self.solve_equation_button.hide()
 
-        button_layout.addWidget(self.hints_button)
-        self.hints_button.clicked.connect(self.show_hints)
-
         button_layout.addWidget(self.load_file_button)
         self.load_file_button.clicked.connect(self.load_file)
 
+        button_layout.addWidget(self.hints_button)
+        self.hints_button.clicked.connect(self.show_hints)
 
         self.calc_button = QPushButton("Вычислить", self)
         self.calc_button.clicked.connect(self.calculate)
@@ -139,7 +138,7 @@ class MainWindow(QWidget):
 
         self.result_table = ResultTable()
         self.result_table.setMaximumHeight(140)
-        # self.result_table.setDisabled(True)
+        self.result_table.setDisabled(True)
         self.result_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.main_layout.addWidget(self.result_table, stretch=0)
 
@@ -217,7 +216,7 @@ class MainWindow(QWidget):
                 self.show_error("Ошибка выбора начального приближения", f"Начальное приближение по X должно быть между {self.x_left_border} и {self.x_right_border}.")
                 return False
             if not self.y_bottom_border <= y_start <= self.y_top_border:
-                self.show_error("Ошибка выбора начального приближения", f"Начальное приближение по X должно быть между {self.x_left_border} и {self.x_right_border}.")
+                self.show_error("Ошибка выбора начального приближения", f"Начальное приближение по X должно быть между {self.y_bottom_border} и {self.y_top_border}.")
                 return False
 
             self.x_start = x_start
@@ -363,11 +362,15 @@ class MainWindow(QWidget):
     def calculate_one(self):
         results = []
         results.append(("Метод половинного деления", half_division(self.x_left_border, self.x_right_border, self.accuracy, self.single_function)))
-        print("раз")
+        # print("раз")
         results.append(("Метод Ньютона", newton(self.x_left_border, self.x_right_border, self.accuracy, self.single_function, self.dev_mode)))
-        print("два")
+        # print("два")
         results.append(("Метод простой итерации", simple_iteration(self.x_left_border, self.x_right_border, self.accuracy, self.single_function, self.dev_mode)))
-        print("три")
+        # print("три")
+        for method_name, result in results:
+            if result["status_msg"] == "OK":
+                self.graph_widget.add_solution_point(result["root"], result["value"])
+
         self.save_button.show()
         self.result_table.update_result_table_solo(results)
         return results
@@ -375,6 +378,11 @@ class MainWindow(QWidget):
     def calculate_system(self):
         results = []
         results.append(("Метод простой итерации", system_simple_iteration_solver(self.x_left_border, self.x_right_border, self.y_bottom_border, self.y_top_border, self.x_start, self.y_start, self.accuracy, self.selected_value, self.dev_mode)))
+        print(results)
+        for method_name, result in results:
+            if result["status_msg"] == "OK":
+                self.graph_widget.add_solution_point(result["root"], result["value"])
+        print(result["status_msg"])
         self.save_button.show()
         self.result_table.update_result_table_system(results)
         return results
